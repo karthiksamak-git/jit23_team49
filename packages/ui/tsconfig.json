@@ -1,0 +1,9 @@
+{
+  "extends": "@careerverse/config/typescript/base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "moduleResolution": "bundler"
+  },
+  "include": ["src/**/*"]
+}

@@ -1,0 +1,281 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+/* ═══════════════════════════════════════════════════════════
+   CAREERVERSE — FORGE YOUR DESTINY
+   Dark silhouette + vintage ink theme
+   No sparkles. No particles. Only atmosphere.
+   ═══════════════════════════════════════════════════════════ */
+
+@layer base {
+  :root {
+    --void: #040506;
+    --ink: #0a0b0d;
+    --parchment: #1a1714;
+    --parchment-light: #2a2520;
+    --border: rgba(180, 155, 100, 0.12);
+    --border-active: rgba(180, 155, 100, 0.35);
+    --accent: #b49b64;
+    --accent-bright: #d4bf8a;
+    --accent-dim: #7a6a42;
+    --blood: #8b2020;
+    --blood-bright: #c43030;
+    --sage: #4a7a5a;
+    --text: #c8c0b0;
+    --text-dim: #6b6358;
+    --text-faint: #3d3830;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--parchment) var(--void);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: var(--void);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background-color: rgba(180, 155, 100, 0.25);
+    color: var(--accent-bright);
+  }
+}
+
+/* ═════════════ TYPOGRAPHY ═════════════ */
+
+.font-cinzel { font-family: 'Cinzel', serif; }
+.font-mono { font-family: 'JetBrains Mono', monospace; }
+
+/* ═════════════ SURFACES ═════════════ */
+
+/* Dark panel — the main container surface */
+.surface {
+  background: var(--ink);
+  border: 1px solid var(--border);
+}
+
+/* Parchment — aged scroll texture via gradients */
+.scroll-surface {
+  background:
+    linear-gradient(160deg, #1a1714 0%, #13110e 40%, #0e0d0b 100%);
+  border: 1px solid var(--border);
+  position: relative;
+}
+
+/* Worn edge effect on scroll containers */
+.scroll-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to right, rgba(4,5,6,0.6) 0%, transparent 3%, transparent 97%, rgba(4,5,6,0.6) 100%),
+    linear-gradient(to bottom, rgba(4,5,6,0.4) 0%, transparent 4%, transparent 96%, rgba(4,5,6,0.4) 100%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* Ink brush stroke divider */
+.ink-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--border-active) 20%,
+    var(--border-active) 50%,
+    var(--border-active) 80%,
+    transparent 100%
+  );
+}
+
+/* ═════════════ VIGNETTE — Edge darkening only ═════════════ */
+
+.vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 55%,
+    rgba(4, 5, 6, 0.5) 85%,
+    rgba(4, 5, 6, 0.85) 100%
+  );
+}
+
+/* ═════════════ TYPEWRITER ═════════════ */
+
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.cursor-blink {
+  animation: blink-cursor 1s step-end infinite;
+}
+
+/* ═════════════ XP / PROGRESS BAR ═════════════ */
+
+.xp-track {
+  background: rgba(10, 11, 13, 0.9);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.xp-fill {
+  background: linear-gradient(90deg, var(--accent-dim), var(--accent), var(--accent-bright));
+  height: 100%;
+  transition: width 1s ease;
+}
+
+/* ═════════════ MAP PATH — SVG ink lines ═════════════ */
+
+.ink-path {
+  stroke: var(--accent-dim);
+  stroke-width: 2;
+  fill: none;
+  opacity: 0.4;
+}
+
+.ink-path-active {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  fill: none;
+  opacity: 0.9;
+}
+
+/* ═════════════ NODE STATES ═════════════ */
+
+.node-locked { opacity: 0.25; cursor: not-allowed; }
+.node-available { opacity: 1; cursor: pointer; }
+.node-completed { opacity: 0.7; }
+
+.node-available:hover {
+  border-color: var(--accent) !important;
+  transition: border-color 0.3s ease;
+}
+
+/* ═════════════ HEALTH / ENERGY BAR ═════════════ */
+
+.health-track {
+  background: var(--ink);
+  border: 1px solid rgba(139, 32, 32, 0.3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.health-fill {
+  background: linear-gradient(90deg, var(--blood), var(--blood-bright));
+  height: 100%;
+  transition: width 0.5s ease;
+}
+
+/* ═════════════ SCROLLBAR ═════════════ */
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--void); }
+::-webkit-scrollbar-thumb {
+  background: var(--parchment);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--parchment-light); }
+
+/* ═════════════ BUTTON STYLES ═════════════ */
+
+.btn-scroll {
+  background: linear-gradient(135deg, var(--parchment) 0%, var(--ink) 100%);
+  border: 1px solid var(--border-active);
+  color: var(--accent-bright);
+  font-family: 'Cinzel', serif;
+  letter-spacing: 0.1em;
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+
+.btn-scroll:hover {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, var(--parchment-light) 0%, var(--parchment) 100%);
+  color: #e8dcc8;
+}
+
+.btn-scroll:active {
+  transform: scale(0.98);
+}
+
+.btn-blood {
+  background: linear-gradient(135deg, rgba(139,32,32,0.3) 0%, rgba(139,32,32,0.15) 100%);
+  border: 1px solid rgba(196, 48, 48, 0.3);
+  color: var(--blood-bright);
+  font-family: 'Cinzel', serif;
+  letter-spacing: 0.1em;
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+
+.btn-blood:hover {
+  border-color: var(--blood-bright);
+  background: linear-gradient(135deg, rgba(139,32,32,0.5) 0%, rgba(139,32,32,0.25) 100%);
+}
+
+/* ═════════════ SEAL / STAMP ═════════════ */
+
+.seal {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--accent);
+  background: var(--ink);
+}
+
+.seal-completed {
+  border-color: var(--sage);
+  color: var(--sage);
+}
+
+.seal-locked {
+  border-color: var(--text-faint);
+  color: var(--text-faint);
+}
+
+/* ═════════════ FADE TRANSITIONS ═════════════ */
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.6s ease forwards;
+}
+
+/* ═════════════ DIALOGUE BOX ═════════════ */
+
+.dialogue-box {
+  background: linear-gradient(180deg, rgba(26,23,20,0.95) 0%, rgba(10,11,13,0.98) 100%);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-dim);
+  position: relative;
+}
+
+.dialogue-box::after {
+  content: '—';
+  position: absolute;
+  bottom: -1px;
+  right: 16px;
+  color: var(--text-faint);
+  font-family: 'Cinzel', serif;
+  font-size: 12px;
+}

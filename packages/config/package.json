@@ -1,0 +1,13 @@
+{
+  "name": "@careerverse/config",
+  "version": "0.0.1",
+  "private": true,
+  "exports": {
+    "./typescript/base": "./typescript/base.json",
+    "./typescript/base.json": "./typescript/base.json",
+    "./typescript/nextjs": "./typescript/nextjs.json",
+    "./typescript/nextjs.json": "./typescript/nextjs.json",
+    "./typescript/nestjs": "./typescript/nestjs.json",
+    "./typescript/nestjs.json": "./typescript/nestjs.json"
+  }
+}

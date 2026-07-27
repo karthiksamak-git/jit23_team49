@@ -1,0 +1,402 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  LEARNER
+  MENTOR
+  ADMIN
+}
+
+enum EducationLevel {
+  HIGH_SCHOOL
+  UNDERGRADUATE
+  GRADUATE
+  PROFESSIONAL
+}
+
+enum ExperienceLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum LearningStyle {
+  VISUAL
+  AUDITORY
+  READING
+  KINESTHETIC
+  MIXED
+}
+
+enum AssessmentType {
+  INTEREST
+  PERSONALITY
+  SKILL
+  LOGICAL
+  APTITUDE
+  COMMUNICATION
+  CODING
+  BEHAVIORAL
+}
+
+enum MissionType {
+  READ
+  QUIZ
+  PROJECT
+  BOSS
+}
+
+enum MissionStatus {
+  LOCKED
+  AVAILABLE
+  IN_PROGRESS
+  COMPLETED
+}
+
+// Better Auth tables
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  role          UserRole  @default(LEARNER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions            Session[]
+  accounts            Account[]
+  profile             UserProfile?
+  assessmentResults   AssessmentResult[]
+  careerRecommendations CareerRecommendation[]
+  worldProgress       UserWorldProgress[]
+  missionProgress     UserMissionProgress[]
+  gamification        UserGamification?
+  achievements        UserAchievement[]
+  onboardingProgress  OnboardingProgress?
+  leaderboardEntries  LeaderboardEntry[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verifications")
+}
+
+model UserProfile {
+  id               String           @id @default(cuid())
+  userId           String           @unique
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  educationLevel   EducationLevel?
+  experienceLevel  ExperienceLevel?
+  careerGoals      String[]         @default([])
+  interests        String[]         @default([])
+  learningStyle    LearningStyle?
+  dailyTimeMinutes Int?
+  preferredDomains String[]         @default([])
+  onboardingComplete Boolean        @default(false)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@map("user_profiles")
+}
+
+model OnboardingProgress {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentStep Int    @default(1)
+  stepData  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("onboarding_progress")
+}
+
+model Assessment {
+  id          String         @id @default(cuid())
+  type        AssessmentType @unique
+  title       String
+  description String
+  duration    Int            @default(15)
+  questions   Question[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("assessments")
+}
+
+model Question {
+  id           String     @id @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  text         String
+  order        Int
+  questionType String     @default("MCQ")
+  dimension    String?
+  options      QuestionOption[]
+
+  @@map("questions")
+}
+
+model QuestionOption {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  text       String
+  dimension  String?
+  points     Int      @default(0)
+
+  @@map("question_options")
+}
+
+model AssessmentResult {
+  id             String         @id @default(cuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assessmentType AssessmentType
+  dimensionScores Json
+  completedAt    DateTime       @default(now())
+
+  @@unique([userId, assessmentType])
+  @@map("assessment_results")
+}
+
+model Career {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  description   String
+  domain        String
+  marketDemand  Float    @default(0.5)
+  requirements  CareerSkillRequirement[]
+  recommendations CareerRecommendation[]
+
+  @@map("careers")
+}
+
+model Skill {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  category    String
+  requirements CareerSkillRequirement[]
+
+  @@map("skills")
+}
+
+model CareerSkillRequirement {
+  id           String @id @default(cuid())
+  careerId     String
+  career       Career @relation(fields: [careerId], references: [id], onDelete: Cascade)
+  skillId      String
+  skill        Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  requiredLevel Int   @default(70)
+  weight       Float  @default(1.0)
+
+  @@unique([careerId, skillId])
+  @@map("career_skill_requirements")
+}
+
+model CareerRecommendation {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  careerId           String
+  career             Career   @relation(fields: [careerId], references: [id], onDelete: Cascade)
+  compatibilityScore Int
+  reasons            String[]
+  skillGaps          Json
+  createdAt          DateTime @default(now())
+
+  @@unique([userId, careerId])
+  @@map("career_recommendations")
+}
+
+model World {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String
+  domain      String
+  icon        String  @default("globe")
+  color       String  @default("#6366f1")
+  levels      Level[]
+  progress    UserWorldProgress[]
+
+  @@map("worlds")
+}
+
+model Level {
+  id          String   @id @default(cuid())
+  worldId     String
+  world       World    @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  number      Int
+  name        String
+  description String
+  xpRequired  Int      @default(0)
+  regions     Region[]
+
+  @@unique([worldId, number])
+  @@map("levels")
+}
+
+model Region {
+  id          String    @id @default(cuid())
+  levelId     String
+  level       Level     @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  name        String
+  description String
+  order       Int
+  missions    Mission[]
+
+  @@map("regions")
+}
+
+model Mission {
+  id          String          @id @default(cuid())
+  regionId    String
+  region      Region          @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  type        MissionType
+  order       Int
+  xpReward    Int             @default(50)
+  coinReward  Int             @default(25)
+  content     String          @db.Text
+  quizData    Json?
+  progress    UserMissionProgress[]
+
+  @@map("missions")
+}
+
+model UserWorldProgress {
+  id                String @id @default(cuid())
+  userId            String
+  user              User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  worldId           String
+  world             World  @relation(fields: [worldId], references: [id], onDelete: Cascade)
+  currentLevel      Int    @default(1)
+  xpEarned          Int    @default(0)
+  missionsCompleted Int    @default(0)
+  regionsUnlocked   Int    @default(1)
+
+  @@unique([userId, worldId])
+  @@map("user_world_progress")
+}
+
+model UserMissionProgress {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  missionId   String
+  mission     Mission       @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  status      MissionStatus @default(LOCKED)
+  completedAt DateTime?
+
+  @@unique([userId, missionId])
+  @@map("user_mission_progress")
+}
+
+model UserGamification {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  xp             Int      @default(0)
+  coins          Int      @default(0)
+  streak         Int      @default(0)
+  lastLoginDate  DateTime?
+  title          String   @default("Explorer")
+  level          Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("user_gamification")
+}
+
+model Achievement {
+  id          String            @id @default(cuid())
+  name        String
+  slug        String            @unique
+  description String
+  icon        String            @default("trophy")
+  xpReward    Int               @default(0)
+  coinReward  Int               @default(0)
+  condition   String
+  hidden      Boolean           @default(false)
+  users       UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  unlockedAt    DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+model LeaderboardEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart DateTime
+  xp        Int      @default(0)
+  rank      Int?
+
+  @@unique([userId, weekStart])
+  @@map("leaderboard_entries")
+}
