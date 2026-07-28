@@ -1,4 +1,4 @@
-import type { ScoringRule, DimensionScore } from "./types";
+import type { ScoringRule, DimensionScore } from "./types.js";
 
 export function calculateDimensionScores(
   rules: ScoringRule[],

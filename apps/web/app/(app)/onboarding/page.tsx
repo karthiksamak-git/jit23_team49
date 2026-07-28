@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
    Ends with character name entry & Auth redirect.
    ═══════════════════════════════════════════ */
 
-import { CleanSamuraiImg } from "@/lib/clean-samurai";
+import { CleanNarratorImg } from "@/lib/clean-samurai";
 
 interface Chapter {
   id: string;
@@ -123,47 +123,122 @@ const chapters: Chapter[] = [
   },
 ];
 
-/* Dialogue typewriter for sensei */
-function SenseiDialogue({ lines, onDone }: { lines: string[]; onDone: () => void }) {
+/* Fixed Bottom-Left Narrator Character & Popup Speech Bubble */
+function BottomLeftNarrator({
+  lines,
+  onDone,
+}: {
+  lines: string[];
+  onDone: () => void;
+}) {
   const [lineIdx, setLineIdx] = useState(0);
   const [charIdx, setCharIdx] = useState(0);
   const [done, setDone] = useState<string[]>([]);
 
   useEffect(() => {
-    if (lineIdx >= lines.length) { onDone(); return; }
+    setLineIdx(0);
+    setCharIdx(0);
+    setDone([]);
+  }, [lines]);
+
+  useEffect(() => {
+    if (lineIdx >= lines.length) return;
     const line = lines[lineIdx];
     if (charIdx < line.length) {
-      const t = setTimeout(() => setCharIdx(c => c + 1), 35);
+      const t = setTimeout(() => setCharIdx((c) => c + 1), 30);
       return () => clearTimeout(t);
     } else {
       const t = setTimeout(() => {
-        setDone(d => [...d, line]);
-        setLineIdx(l => l + 1);
+        setDone((d) => [...d, line]);
+        setLineIdx((l) => l + 1);
         setCharIdx(0);
-      }, 500);
+      }, 400);
       return () => clearTimeout(t);
     }
-  }, [lineIdx, charIdx, lines, onDone]);
+  }, [lineIdx, charIdx, lines]);
+
+  const isTyping = lineIdx < lines.length;
 
   return (
-    <div className="dialogue-box rounded px-6 py-5 space-y-2">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-6 h-6 rounded-full border border-[#b49b64]/40 bg-[#0a0b0d] overflow-hidden flex items-center justify-center p-0.5">
-          <CleanSamuraiImg alt="Sensei" className="w-full h-full object-contain" />
-        </div>
-        <span className="font-cinzel text-[10px] tracking-[0.3em] text-[#6b6358] uppercase">
-          Master Sensei
-        </span>
+    <div className="fixed bottom-0 left-2 md:left-8 z-40 flex items-end gap-3 md:gap-6 pointer-events-none">
+      {/* 1. Standing Character PNG at bottom-left corner (LARGER SIZE, no box/frame container) */}
+      <div className="relative flex-shrink-0 flex flex-col items-center">
+        <motion.div
+          animate={{ y: [0, -8, 0] }}
+          transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
+          onClick={onDone}
+          className="relative z-10 w-48 sm:w-64 md:w-80 h-[260px] sm:h-[350px] md:h-[430px] flex items-end justify-center pointer-events-auto cursor-pointer group"
+          title="Click to continue"
+        >
+          <CleanNarratorImg
+            alt="Narrator Sensei"
+            className="w-full h-full object-contain filter drop-shadow-[0_15px_30px_rgba(0,0,0,0.95)] transition-transform duration-300 group-hover:scale-105"
+          />
+        </motion.div>
+        {/* Soft floor shadow */}
+        <div className="w-36 md:w-56 h-4 bg-[#b49b64]/30 rounded-full blur-md -mt-4 pointer-events-none" />
       </div>
-      {done.map((l, i) => (
-        <p key={i} className="font-cinzel text-sm text-[#6b6358] leading-relaxed italic">"{l}"</p>
-      ))}
-      {lineIdx < lines.length && (
-        <p className="font-cinzel text-sm text-[#b49b64] leading-relaxed italic">
-          "{lines[lineIdx].slice(0, charIdx)}
-          <span className="inline-block w-[1px] h-[0.9em] bg-[#b49b64]/50 ml-0.5 cursor-blink" />"
-        </p>
-      )}
+
+      {/* 2. Pop-up Speech Bubble Narration Box (LARGER SIZE) */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: "easeOut" }}
+        onClick={onDone}
+        className="pointer-events-auto mb-12 md:mb-20 w-80 sm:w-[420px] md:w-[520px] rounded-2xl bg-[#090b0f]/95 border-2 border-[#b49b64]/60 p-5 md:p-6 shadow-[0_15px_50px_rgba(0,0,0,0.95)] backdrop-blur-md relative space-y-4 cursor-pointer group"
+        title="Click to continue"
+      >
+        {/* Speech Bubble Pointer pointing to character */}
+        <div className="absolute -left-3.5 bottom-8 w-0 h-0 border-y-8 border-y-transparent border-r-[14px] border-r-[#b49b64]/60 hidden sm:block" />
+        <div className="absolute -left-[11px] bottom-8 w-0 h-0 border-y-8 border-y-transparent border-r-[12px] border-r-[#090b0f] hidden sm:block" />
+
+        {/* Narrator Header */}
+        <div className="flex items-center justify-between border-b border-[#b49b64]/25 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="font-cinzel text-xs md:text-sm font-bold text-[#b49b64] uppercase tracking-widest">
+              Master Sensei
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isTyping ? (
+              <div className="flex items-center gap-1">
+                <span className="w-1 h-3 bg-[#b49b64] rounded-full animate-bounce [animation-delay:-0.3s]" />
+                <span className="w-1 h-4 bg-[#b49b64] rounded-full animate-bounce [animation-delay:-0.15s]" />
+                <span className="w-1 h-2.5 bg-[#b49b64] rounded-full animate-bounce" />
+              </div>
+            ) : (
+              <span className="font-mono text-[10px] text-[#4a7a5a] uppercase flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-[#4a7a5a]" />
+                Dialogue Complete
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Dialogue Text */}
+        <div className="space-y-2.5 max-h-48 overflow-y-auto scrollbar-thin">
+          {done.map((l, i) => (
+            <p key={i} className="font-cinzel text-sm md:text-base text-[#c8c0b0] leading-relaxed italic">
+              "{l}"
+            </p>
+          ))}
+          {lineIdx < lines.length && (
+            <p className="font-cinzel text-sm md:text-base text-[#b49b64] leading-relaxed italic font-medium">
+              "{lines[lineIdx].slice(0, charIdx)}
+              <span className="inline-block w-0.5 h-4 bg-[#b49b64] ml-0.5 animate-pulse" />"
+            </p>
+          )}
+        </div>
+
+        {/* Skip action prompt */}
+        <div className="pt-2 flex items-center justify-end border-t border-[#b49b64]/20">
+          <span className="font-cinzel text-xs font-bold text-[#b49b64] group-hover:text-[#ffffff] transition-colors flex items-center gap-1 animate-pulse">
+            <span>Skip</span>
+            <span className="text-sm font-mono">→</span>
+          </span>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -229,19 +304,47 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-48px)] flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-2xl space-y-6">
+    <div
+      onClick={() => {
+        if (!dialogueDone) setDialogueDone(true);
+      }}
+      className="relative min-h-[calc(100vh-48px)] flex items-center justify-center px-4 py-8 pb-48 md:pb-12 overflow-hidden"
+    >
+      {/* Bright Medieval Battle Scene Background Image (vecteezy_warriors-in-medieval-battle-scene-fighting-in-silhouette_27447174) */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <img
+          src="/png/vecteezy_warriors-in-medieval-battle-scene-fighting-in-silhouette_27447174.jpg"
+          alt="Medieval Battle Scene"
+          className="w-full h-full object-cover opacity-55 filter brightness-90 contrast-110 saturate-80 scale-105"
+        />
+        {/* Soft Vignette Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#06070a] via-[#06070a]/30 to-[#06070a]/70" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#06070a]/60 via-transparent to-[#06070a]/60" />
+      </div>
+
+      {/* Bottom-Left Standing Narrator PNG + Pop-up Dialogue Box (Disappears when dialogueDone is true) */}
+      <AnimatePresence>
+        {!dialogueDone && (
+          <BottomLeftNarrator
+            key={`narrator-${step}`}
+            lines={chapter.senseiDialogue}
+            onDone={() => setDialogueDone(true)}
+          />
+        )}
+      </AnimatePresence>
+
+      <div className="relative z-10 w-full max-w-4xl lg:max-w-5xl space-y-8">
         {/* Progress — simple ink marks */}
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2.5">
           {chapters.map((_, i) => (
             <div
               key={i}
-              className={`h-[3px] rounded-full transition-all duration-500 ${
+              className={`h-1 rounded-full transition-all duration-500 ${
                 i < step
-                  ? "w-8 bg-[#b49b64]/60"
+                  ? "w-10 md:w-14 bg-[#b49b64]/60"
                   : i === step
-                  ? "w-10 bg-[#b49b64]"
-                  : "w-4 bg-[#3d3830]/50"
+                  ? "w-12 md:w-16 bg-[#b49b64]"
+                  : "w-5 md:w-6 bg-[#3d3830]/50"
               }`}
             />
           ))}
@@ -250,36 +353,30 @@ export default function OnboardingPage() {
         <AnimatePresence mode="wait">
           <motion.div
             key={step}
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
+            exit={{ opacity: 0, y: -14 }}
             transition={{ duration: 0.4 }}
-            className="space-y-6"
+            className="space-y-8"
           >
-            {/* Sensei dialogue */}
-            <SenseiDialogue
-              key={`dialogue-${step}`}
-              lines={chapter.senseiDialogue}
-              onDone={() => setDialogueDone(true)}
-            />
-
-            {/* Question + Choices — appear after dialogue */}
-            <AnimatePresence>
+            {/* Reveal Question + Choices when dialogueDone is true */}
+            <AnimatePresence mode="wait">
               {dialogueDone && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 18 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
-                  className="space-y-5"
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                  className="space-y-8"
                 >
-                  <p className="font-cinzel text-base text-[#c8c0b0] text-center tracking-wide">
+                  <p className="font-cinzel text-xl md:text-3xl lg:text-4xl font-extrabold text-[#e8dfc8] text-center tracking-wide drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">
                     {chapter.question}
                   </p>
 
                   {/* Character Name Input */}
                   {chapter.isNameInput ? (
-                    <div className="scroll-surface rounded p-6 max-w-md mx-auto space-y-4">
-                      <label className="block font-cinzel text-xs text-[#6b6358] uppercase tracking-widest text-center">
+                    <div className="scroll-surface rounded-xl p-8 md:p-12 max-w-xl mx-auto space-y-6 shadow-2xl border-2 border-[#b49b64]/40 bg-[#090b0f]/95 backdrop-blur-md">
+                      <label className="block font-cinzel text-xs md:text-sm text-[#8c8270] uppercase tracking-widest text-center font-bold">
                         Warrior Name
                       </label>
                       <input
@@ -287,38 +384,45 @@ export default function OnboardingPage() {
                         value={(answers.name as string) || ""}
                         onChange={(e) => setAnswers({ ...answers, name: e.target.value })}
                         placeholder="e.g. Master Ronin"
-                        className="w-full bg-[#0a0b0d] border border-[#b49b64]/30 rounded px-4 py-3 text-center font-cinzel text-base text-[#b49b64] placeholder:text-[#3d3830] focus:outline-none focus:border-[#b49b64]"
+                        className="w-full bg-[#040507] border-2 border-[#b49b64]/50 rounded-lg px-6 py-4 text-center font-cinzel text-lg md:text-2xl text-[#b49b64] placeholder:text-[#3d3830] focus:outline-none focus:border-[#b49b64] shadow-inner"
                         autoFocus
                       />
-                      <p className="text-[11px] text-[#5a5548] text-center italic">
+                      <p className="text-xs md:text-sm text-[#7a7263] text-center italic">
                         This name will be sealed onto your warrior scrolls and profile.
                       </p>
                     </div>
                   ) : (
-                    /* Choice cards — scroll/parchment style */
-                    <div className={`grid gap-3 ${
-                      (chapter.choices?.length || 0) <= 4
-                        ? "grid-cols-1 sm:grid-cols-2"
-                        : "grid-cols-2 sm:grid-cols-3"
-                    }`}>
+                    /* Choice cards — scroll/parchment style (LARGER SIZE) */
+                    <div
+                      className={`grid gap-4 md:gap-6 ${
+                        (chapter.choices?.length || 0) <= 4
+                          ? "grid-cols-1 sm:grid-cols-2"
+                          : "grid-cols-2 sm:grid-cols-3"
+                      }`}
+                    >
                       {chapter.choices?.map((c) => {
                         const selected = isSelected(c.id);
                         return (
                           <button
                             key={c.id}
-                            onClick={() => selectChoice(c.id)}
-                            className={`text-left p-4 rounded transition-all duration-200 ${
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              selectChoice(c.id);
+                            }}
+                            className={`text-left p-6 md:p-8 rounded-xl transition-all duration-200 shadow-2xl backdrop-blur-md border-2 ${
                               selected
-                                ? "scroll-surface border-[#b49b64]/40 ring-1 ring-[#b49b64]/20"
-                                : "surface hover:border-[#b49b64]/20"
+                                ? "bg-[#14120e]/95 border-[#b49b64] ring-2 ring-[#b49b64]/30 scale-[1.02]"
+                                : "bg-[#090b0f]/90 border-[#b49b64]/25 hover:border-[#b49b64]/60 hover:bg-[#0d1016]/95 hover:scale-[1.01]"
                             }`}
                           >
-                            <p className={`font-cinzel text-sm font-bold tracking-wider ${
-                              selected ? "text-[#b49b64]" : "text-[#c8c0b0]"
-                            }`}>
+                            <p
+                              className={`font-cinzel text-base md:text-xl lg:text-2xl font-extrabold tracking-wider ${
+                                selected ? "text-[#b49b64]" : "text-[#e0d6c3]"
+                              }`}
+                            >
                               {c.label}
                             </p>
-                            <p className="text-xs text-[#6b6358] mt-1.5 leading-relaxed">
+                            <p className="text-sm md:text-base text-[#9a9182] mt-2.5 leading-relaxed font-sans font-medium">
                               {c.lore}
                             </p>
                           </button>
@@ -328,23 +432,29 @@ export default function OnboardingPage() {
                   )}
 
                   {/* Navigation */}
-                  <div className="flex items-center justify-between pt-4">
+                  <div className="flex items-center justify-between pt-6">
                     <button
-                      onClick={handleBack}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleBack();
+                      }}
                       disabled={step === 0}
-                      className={`font-cinzel text-xs tracking-widest uppercase px-4 py-2 rounded transition-colors ${
+                      className={`font-cinzel text-xs md:text-sm font-bold tracking-widest uppercase px-6 py-3 rounded-lg transition-colors ${
                         step === 0
                           ? "text-[#3d3830] cursor-not-allowed"
-                          : "text-[#6b6358] hover:text-[#c8c0b0]"
+                          : "text-[#8c8270] hover:text-[#e8dfc8]"
                       }`}
                     >
                       ← Return
                     </button>
                     <button
-                      onClick={handleNext}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleNext();
+                      }}
                       disabled={!hasAnswer}
-                      className={`btn-scroll px-8 py-2.5 rounded text-xs uppercase tracking-widest transition-all ${
-                        !hasAnswer ? "opacity-30 cursor-not-allowed" : ""
+                      className={`btn-scroll px-10 py-3.5 rounded-lg text-xs md:text-sm font-bold uppercase tracking-widest transition-all ${
+                        !hasAnswer ? "opacity-30 cursor-not-allowed" : "shadow-[0_0_25px_rgba(180,155,100,0.4)]"
                       }`}
                     >
                       {isLast ? "Proceed to Sign Up →" : "Continue →"}

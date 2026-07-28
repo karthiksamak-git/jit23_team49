@@ -33,8 +33,8 @@ export class OnboardingService {
 
     return this.prisma.onboardingProgress.upsert({
       where: { userId },
-      update: { currentStep: step, stepData },
-      create: { userId, currentStep: step, stepData },
+      update: { currentStep: step, stepData: stepData as any },
+      create: { userId, currentStep: step, stepData: stepData as any },
     });
   }
 

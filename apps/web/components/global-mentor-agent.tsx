@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/game-context";
-import { CleanSamuraiImg } from "@/lib/clean-samurai";
+import { CleanMasterImg } from "@/lib/clean-samurai";
 import { getMentorResponse, ChatMessage } from "@/lib/ai-client";
 
 export function GlobalMentorAgent() {
@@ -116,15 +116,16 @@ export function GlobalMentorAgent() {
             <div className="p-4 bg-[#0e1014] border-b border-[rgba(180,155,100,0.12)] flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="relative w-10 h-10 rounded-full border border-[#b49b64]/40 bg-[#040506] overflow-hidden flex items-center justify-center p-0.5">
-                  <CleanSamuraiImg alt="Master Kael" className="w-full h-full object-contain" />
+                  <CleanMasterImg alt="Master Kael" className="w-full h-full object-contain" />
                   <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#4a7a5a] border-2 border-[#040506]" />
                 </div>
                 <div>
                   <h3 className="font-cinzel text-sm font-bold text-[#b49b64] tracking-wider">
                     Master Kael
                   </h3>
-                  <p className="font-mono text-[10px] text-[#4a7a5a]">
-                    AI Sensei • Groq Llama 3.3 Active
+                  <p className="font-mono text-[10px] text-[#4a7a5a] flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#4a7a5a] animate-pulse" />
+                    Online
                   </p>
                 </div>
               </div>
@@ -210,22 +211,29 @@ export function GlobalMentorAgent() {
         )}
       </AnimatePresence>
 
-      {/* Floating Sensei Trigger Button */}
+      {/* Floating Master Trigger */}
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="relative group flex items-center gap-3 p-2.5 rounded-full bg-[#0c0e11] border-2 border-[#b49b64] shadow-[0_0_20px_rgba(180,155,100,0.3)] transition-all hover:shadow-[0_0_30px_rgba(180,155,100,0.5)]"
+        className="relative group flex flex-col items-center gap-1.5 focus:outline-none cursor-pointer"
       >
-        <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center bg-[#040506]">
-          <CleanSamuraiImg alt="AI Sensei" className="w-full h-full object-contain" />
+        <div className="relative w-16 h-16 md:w-20 md:h-20 flex items-center justify-center">
+          {/* Active online pulse indicator */}
+          <span className="absolute top-0 right-0 z-20 w-3.5 h-3.5 rounded-full bg-[#4a7a5a] border-2 border-[#040506] animate-ping" />
+          <span className="absolute top-0 right-0 z-20 w-3.5 h-3.5 rounded-full bg-[#4a7a5a] border-2 border-[#040506]" />
+
+          {/* Clean PNG image without box background */}
+          <CleanMasterImg
+            alt="Ask Master"
+            className="w-full h-full object-contain filter drop-shadow-[0_8px_20px_rgba(0,0,0,0.9)] transition-transform group-hover:scale-110"
+          />
         </div>
-        <span className="pr-3 font-cinzel text-xs font-bold text-[#b49b64] tracking-wider hidden md:inline">
-          {isOpen ? "Close Sensei" : "Ask AI Mentor"}
+
+        {/* Text badge below the PNG image */}
+        <span className="font-cinzel text-xs font-bold text-[#b49b64] group-hover:text-[#ffffff] tracking-wider px-3 py-1 rounded-full bg-[#0c0e11]/90 border border-[#b49b64]/50 shadow-[0_4px_15px_rgba(0,0,0,0.8)] backdrop-blur-md transition-colors">
+          {isOpen ? "Close Master" : "Ask Master"}
         </span>
-        {/* Glow indicator pulse */}
-        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#4a7a5a] border-2 border-[#040506] animate-ping" />
-        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#4a7a5a] border-2 border-[#040506]" />
       </motion.button>
     </div>
   );

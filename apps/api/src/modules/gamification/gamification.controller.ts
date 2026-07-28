@@ -1,12 +1,12 @@
 import { Controller, Get, Query, Request, UseGuards } from "@nestjs/common";
 import { GamificationService } from "./gamification.service";
-import { SessionGuard } from "../auth/session.guard";
+import { AuthGuard } from "../auth/auth.guard";
 
 @Controller("gamification")
 export class GamificationController {
   constructor(private readonly gamificationService: GamificationService) {}
 
-  @UseGuards(SessionGuard)
+  @UseGuards(AuthGuard)
   @Get("stats")
   async getStats(@Request() req: any) {
     return this.gamificationService.getUserStats(req.user.id);

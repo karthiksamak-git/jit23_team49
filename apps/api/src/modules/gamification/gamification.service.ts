@@ -11,13 +11,6 @@ export class GamificationService {
   async getUserStats(userId: string) {
     let stats = await this.prisma.userGamification.findUnique({
       where: { userId },
-      include: {
-        achievements: {
-          include: {
-            achievement: true,
-          },
-        },
-      },
     });
 
     if (!stats) {
@@ -27,19 +20,22 @@ export class GamificationService {
           xp: 100,
           coins: 20,
           streak: 1,
-          lastActiveAt: new Date(),
-        },
-        include: {
-          achievements: {
-            include: {
-              achievement: true,
-            },
-          },
+          lastLoginDate: new Date(),
         },
       });
     }
 
-    return stats;
+    const achievements = await this.prisma.userAchievement.findMany({
+      where: { userId },
+      include: {
+        achievement: true,
+      },
+    });
+
+    return {
+      ...stats,
+      achievements,
+    };
   }
 
   async getLeaderboard(limit = 50) {
@@ -78,14 +74,14 @@ export class GamificationService {
       update: {
         xp: { increment: xpReward },
         coins: { increment: coinReward },
-        lastActiveAt: new Date(),
+        lastLoginDate: new Date(),
       },
       create: {
         userId,
         xp: 100 + xpReward,
         coins: 20 + coinReward,
         streak: 1,
-        lastActiveAt: new Date(),
+        lastLoginDate: new Date(),
       },
     });
   }
@@ -100,14 +96,14 @@ export class GamificationService {
       update: {
         xp: { increment: 150 },
         coins: { increment: 30 },
-        lastActiveAt: new Date(),
+        lastLoginDate: new Date(),
       },
       create: {
         userId,
         xp: 250,
         coins: 50,
         streak: 1,
-        lastActiveAt: new Date(),
+        lastLoginDate: new Date(),
       },
     });
   }
