@@ -1,12 +1,35 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
+import { isSoundEnabled, setSoundEnabled, playSound } from "./sound-engine";
 
 /* ═══════════════════════════════════════════
    GAME STATE CONTEXT
    Centralized player state — tries API first,
    falls back to localStorage mock data.
+   Includes AI onboarding profile data.
    ═══════════════════════════════════════════ */
+
+export type SoundName =
+  | "correct"
+  | "wrong"
+  | "combo"
+  | "sessionComplete"
+  | "xpMilestone"
+  | "streakMilestone"
+  | "unlock"
+  | "click"
+  | "hover"
+  | "heartLost"
+  | "coin"
+  | "levelUp"
+  | "transition"
+  | "notification"
+  | "victory"
+  | "defeat"
+  | "tick"
+  | "tickUrgent"
+  | "timeUp";
 
 interface PlayerState {
   isAuthenticated: boolean;
@@ -20,6 +43,21 @@ interface PlayerState {
   realmFit: number;
   realmName: string;
   completedMissions: string[];
+  /* ── Programs enrolled with coins ── */
+  enrolledCourses: string[];
+  /* ── Realms unlocked via program enrollment ── */
+  unlockedRealms: string[];
+  /* ── AI Onboarding Profile ── */
+  onboardingComplete: boolean;
+  recommendedDomain: string;
+  domainColor: string;
+  difficultyLevel: string;
+  learningPathSummary: string;
+  interests: string[];
+  strengths: string[];
+  suggestedTopics: string[];
+  capacityScore: number;
+  capacityLevel: "Novice" | "Apprentice" | "Specialist" | "Master";
 }
 
 interface GameContextType {
@@ -32,12 +70,19 @@ interface GameContextType {
   completeMission: (missionId: string, xpEarned: number) => void;
   addXp: (amount: number) => void;
   addCoins: (amount: number) => void;
+  spendCoins: (amount: number) => boolean;
+  updateCapacity: (delta: number) => void;
   refreshProfile: () => void;
+  updateProfile: (updates: Partial<PlayerState>) => void;
+  /* ── Sound ── */
+  soundOn: boolean;
+  toggleSound: () => void;
+  sfx: (name: SoundName, intensity?: number) => void;
 }
 
 const defaultPlayer: PlayerState = {
   isAuthenticated: false,
-  characterName: "Master Ronin",
+  characterName: "Learner",
   email: "",
   level: 1,
   xp: 0,
@@ -45,8 +90,20 @@ const defaultPlayer: PlayerState = {
   streak: 0,
   coins: 0,
   realmFit: 0,
-  realmName: "Uncharted",
+  realmName: "Exploring",
   completedMissions: [],
+  enrolledCourses: [],
+  unlockedRealms: [],
+  onboardingComplete: false,
+  recommendedDomain: "",
+  domainColor: "teal",
+  difficultyLevel: "Beginner",
+  learningPathSummary: "",
+  interests: [],
+  strengths: [],
+  suggestedTopics: [],
+  capacityScore: 35,
+  capacityLevel: "Apprentice",
 };
 
 const GameContext = createContext<GameContextType>({
@@ -59,7 +116,13 @@ const GameContext = createContext<GameContextType>({
   completeMission: () => {},
   addXp: () => {},
   addCoins: () => {},
+  spendCoins: () => false,
+  updateCapacity: () => {},
   refreshProfile: () => {},
+  updateProfile: () => {},
+  soundOn: true,
+  toggleSound: () => {},
+  sfx: () => {},
 });
 
 export function useGame() {
@@ -70,7 +133,11 @@ function loadFromStorage(): PlayerState {
   if (typeof window === "undefined") return defaultPlayer;
   try {
     const raw = localStorage.getItem("cv_player_state");
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Ensure new fields exist (migration)
+      return { ...defaultPlayer, ...parsed };
+    }
   } catch {}
   // Legacy migration
   const isAuth = localStorage.getItem("user_authenticated") === "true";
@@ -78,7 +145,7 @@ function loadFromStorage(): PlayerState {
     return {
       ...defaultPlayer,
       isAuthenticated: true,
-      characterName: localStorage.getItem("character_name") || "Master Ronin",
+      characterName: localStorage.getItem("character_name") || "Learner",
       email: localStorage.getItem("user_email") || "",
       level: 1,
       xp: 100,
@@ -86,11 +153,34 @@ function loadFromStorage(): PlayerState {
       streak: 1,
       coins: 20,
       realmFit: 85,
-      realmName: "Backend Systems",
+      realmName: "Backend Development",
       completedMissions: [],
     };
   }
   return defaultPlayer;
+}
+
+function loadOnboardingProfile(): Partial<PlayerState> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem("cv_onboarding_profile");
+    if (raw) {
+      const profile = JSON.parse(raw);
+      return {
+        onboardingComplete: true,
+        recommendedDomain: profile.recommendedDomain || "",
+        domainColor: profile.domainColor || "teal",
+        difficultyLevel: profile.difficultyLevel || "Beginner",
+        learningPathSummary: profile.learningPathSummary || "",
+        interests: profile.interests || [],
+        strengths: profile.strengths || [],
+        suggestedTopics: profile.suggestedTopics || [],
+        realmName: profile.recommendedDomain || "Exploring",
+        characterName: profile.name || "Learner",
+      };
+    }
+  } catch {}
+  return {};
 }
 
 function saveToStorage(state: PlayerState) {
@@ -116,12 +206,14 @@ function calculateLevel(xp: number): { level: number; xpToNext: number } {
 export function GameProvider({ children }: { children: React.ReactNode }) {
   const [player, setPlayer] = useState<PlayerState>(defaultPlayer);
   const [loading, setLoading] = useState(true);
+  const [soundOn, setSoundOn] = useState(true);
 
   // Load on mount
   useEffect(() => {
     const state = loadFromStorage();
     setPlayer(state);
     setLoading(false);
+    setSoundOn(isSoundEnabled());
   }, []);
 
   // Persist on change
@@ -143,43 +235,54 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = useCallback(async (name: string, email: string, password: string) => {
-    // Try real Better Auth first
+    const onboardingData = loadOnboardingProfile();
+    const characterName = onboardingData.characterName || name || "Learner";
+
     try {
       const res = await fetch("/api/auth/sign-up/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name: characterName, email, password }),
       });
       if (res.ok) {
         const { level: lvl, xpToNext } = calculateLevel(0);
-        setPlayer({
+        const newState: PlayerState = {
           ...defaultPlayer,
+          ...onboardingData,
           isAuthenticated: true,
-          characterName: name,
+          characterName,
           email,
           level: lvl,
           xpToNext,
-        });
+        };
+        setPlayer(newState);
+        saveToStorage(newState);
         return { ok: true };
       }
-      const data = await res.json().catch(() => null);
-      return { ok: false, error: data?.message || "Signup failed" };
     } catch {
-      // API unreachable — fall back to local mock
-      const { level: lvl, xpToNext } = calculateLevel(0);
-      setPlayer({
-        ...defaultPlayer,
-        isAuthenticated: true,
-        characterName: name,
-        email,
-        level: lvl,
-        xpToNext,
-      });
-      return { ok: true };
+      // API call failed
     }
+
+    // Local authentication fallback
+    const { level: lvl, xpToNext } = calculateLevel(0);
+    const newState: PlayerState = {
+      ...defaultPlayer,
+      ...onboardingData,
+      isAuthenticated: true,
+      characterName,
+      email,
+      level: lvl,
+      xpToNext,
+    };
+    setPlayer(newState);
+    saveToStorage(newState);
+    return { ok: true };
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
+    const stored = loadFromStorage();
+    const onboardingData = loadOnboardingProfile();
+
     try {
       const res = await fetch("/api/auth/sign-in/email", {
         method: "POST",
@@ -187,82 +290,87 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
       if (res.ok) {
-        const stored = loadFromStorage();
-        setPlayer({
+        const newState: PlayerState = {
           ...stored,
+          ...onboardingData,
           isAuthenticated: true,
           email,
-        });
+          characterName: onboardingData.characterName || stored.characterName || email.split("@")[0] || "Learner",
+        };
+        setPlayer(newState);
+        saveToStorage(newState);
         return { ok: true };
       }
-      const data = await res.json().catch(() => null);
-      return { ok: false, error: data?.message || "Invalid credentials" };
     } catch {
-      // API unreachable — fall back to local mock
-      const stored = loadFromStorage();
-      setPlayer({
-        ...(stored.email === email ? stored : defaultPlayer),
-        isAuthenticated: true,
-        email,
-        characterName: stored.characterName || "Master Ronin",
-        level: stored.level || 3,
-        xp: stored.xp || 450,
-        xpToNext: stored.xpToNext || 600,
-        streak: stored.streak || 5,
-        coins: stored.coins || 2450,
-        realmFit: stored.realmFit || 92,
-        realmName: stored.realmName || "Backend Systems",
-        completedMissions: stored.completedMissions || ["m1", "m2"],
-      });
-      return { ok: true };
+      // API call failed
     }
+
+    // Local authentication fallback
+    const newState: PlayerState = {
+      ...(stored.email === email ? stored : defaultPlayer),
+      ...onboardingData,
+      isAuthenticated: true,
+      email,
+      characterName: onboardingData.characterName || stored.characterName || email.split("@")[0] || "Learner",
+      level: stored.level || 1,
+      xp: stored.xp || 100,
+      xpToNext: stored.xpToNext || 200,
+      streak: Math.max(stored.streak || 1, 1),
+      coins: stored.coins || 20,
+      realmFit: stored.realmFit || 85,
+      realmName: onboardingData.recommendedDomain || stored.realmName || "Full-Stack Development",
+      completedMissions: stored.completedMissions || [],
+    };
+    setPlayer(newState);
+    saveToStorage(newState);
+    return { ok: true };
   }, []);
+
 
   const signOut = useCallback(() => {
     setPlayer({ ...defaultPlayer });
     if (typeof window !== "undefined") {
       localStorage.removeItem("cv_player_state");
       localStorage.removeItem("user_authenticated");
+      localStorage.removeItem("cv_onboarding_profile");
+      localStorage.removeItem("character_name");
+      localStorage.removeItem("user_email");
+      window.location.href = "/auth";
     }
-    // Also try API signout
     fetch("/api/auth/sign-out", { method: "POST" }).catch(() => {});
   }, []);
 
   const demoSignIn = useCallback((name?: string) => {
+    const onboardingData = loadOnboardingProfile();
     setPlayer({
       ...defaultPlayer,
+      ...onboardingData,
       isAuthenticated: true,
-      characterName: name || localStorage.getItem("character_name") || "Master Ronin",
+      characterName: name || onboardingData.characterName || localStorage.getItem("character_name") || "Learner",
       level: 1,
       xp: 100,
       xpToNext: 200,
       streak: 1,
       coins: 20,
       realmFit: 85,
-      realmName: "Backend Systems",
+      realmName: onboardingData.recommendedDomain || "Full-Stack Development",
       completedMissions: [],
     });
   }, []);
 
-  const completeMission = useCallback((missionId: string, xpEarned: number) => {
+  const completeMission = useCallback((missionId: string, _xpEarned?: number) => {
+    // Coins-only economy: completing a mission for the FIRST time grants program credit
     setPlayer((prev) => {
       if (prev.completedMissions.includes(missionId)) return prev;
-      const newXp = prev.xp + xpEarned;
-      const { level, xpToNext } = calculateLevel(newXp);
-      const newCoins = prev.coins + Math.floor(xpEarned * 1.5);
       return {
         ...prev,
-        xp: newXp,
-        level,
-        xpToNext,
-        coins: newCoins,
+        coins: prev.coins + 15, // first-completion program credit
         completedMissions: [...prev.completedMissions, missionId],
       };
     });
-    // Try to sync with API
     tryApiCall("/gamification/complete-mission", {
       method: "POST",
-      body: JSON.stringify({ missionId, xpEarned }),
+      body: JSON.stringify({ missionId }),
     });
   }, [tryApiCall]);
 
@@ -276,6 +384,32 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const addCoins = useCallback((amount: number) => {
     setPlayer((prev) => ({ ...prev, coins: prev.coins + amount }));
+  }, []);
+
+  const spendCoins = useCallback((amount: number) => {
+    let ok = false;
+    setPlayer((prev) => {
+      if (prev.coins < amount) return prev; // insufficient funds — no-op
+      ok = true;
+      return { ...prev, coins: prev.coins - amount };
+    });
+    return ok;
+  }, []);
+
+  const updateCapacity = useCallback((delta: number) => {
+    setPlayer((prev) => {
+      const newScore = Math.max(0, Math.min(100, (prev.capacityScore || 35) + delta));
+      let newLevel: "Novice" | "Apprentice" | "Specialist" | "Master" = "Apprentice";
+      if (newScore < 30) newLevel = "Novice";
+      else if (newScore <= 55) newLevel = "Apprentice";
+      else if (newScore <= 80) newLevel = "Specialist";
+      else newLevel = "Master";
+      return { ...prev, capacityScore: newScore, capacityLevel: newLevel };
+    });
+  }, []);
+
+  const updateProfile = useCallback((updates: Partial<PlayerState>) => {
+    setPlayer((prev) => ({ ...prev, ...updates }));
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -292,11 +426,41 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
   }, [tryApiCall]);
 
-  return (
-    <GameContext.Provider
-      value={{ player, loading, signIn, signUp, signOut, demoSignIn, completeMission, addXp, addCoins, refreshProfile }}
-    >
-      {children}
-    </GameContext.Provider>
+  /* ── Sound controls ── */
+  const toggleSound = useCallback(() => {
+    setSoundOn((prev) => {
+      const next = !prev;
+      setSoundEnabled(next);
+      if (next) playSound("click");
+      return next;
+    });
+  }, []);
+
+  const sfx = useCallback((name: SoundName, intensity = 0) => {
+    playSound(name, intensity);
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      player,
+      loading,
+      signIn,
+      signUp,
+      signOut,
+      demoSignIn,
+      completeMission,
+      addXp,
+      addCoins,
+      spendCoins,
+      updateCapacity,
+      refreshProfile,
+      updateProfile,
+      soundOn,
+      toggleSound,
+      sfx,
+    }),
+    [player, loading, signIn, signUp, signOut, demoSignIn, completeMission, addXp, addCoins, spendCoins, updateCapacity, refreshProfile, updateProfile, soundOn, toggleSound, sfx]
   );
+
+  return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
 }

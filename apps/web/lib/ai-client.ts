@@ -1,10 +1,26 @@
 /* ═══════════════════════════════════════════
-   GROQ AI AGENTIC CLIENT LAYER
+   GROQ AI CLIENT LAYER
    High-speed inference powered by Groq Llama 3.3 70B
    ═══════════════════════════════════════════ */
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+
+/**
+ * Groq model pool, tried in order.
+ * - GROQ_MODEL env var can override the primary model.
+ * - `llama-3.3-70b-versatile` was decommissioned for free/dev tiers on Aug 16, 2026,
+ *   so the pool now leads with GPT-OSS models and self-heals if one is unavailable.
+ */
+const GROQ_MODEL_POOL = [
+  process.env.GROQ_MODEL || process.env.NEXT_PUBLIC_GROQ_MODEL,
+  "openai/gpt-oss-120b",
+  "openai/gpt-oss-20b",
+  "llama-3.3-70b-versatile",
+].filter(Boolean) as string[];
+
+let cachedModel: string | null = null;
+
+export const activeGroqModel = (): string => cachedModel || GROQ_MODEL_POOL[0];
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -22,36 +38,56 @@ export async function chatWithGroq(messages: ChatMessage[], temperature = 0.7): 
   }
 
   try {
-    const res = await fetch(GROQ_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages,
-        temperature,
-        max_tokens: 1024,
-      }),
-    });
+    let lastError: Error | null = null;
+    // Try each model in the pool; cache the first that works so later calls skip failures.
+    const candidates = cachedModel ? [cachedModel] : GROQ_MODEL_POOL;
+    for (const model of candidates) {
+      const res = await fetch(GROQ_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature,
+          max_tokens: 2048,
+          // GPT-OSS models are reasoning models — keep reasoning minimal so the
+          // answer fits in the token budget and latency stays low.
+          ...(model.includes("gpt-oss") ? { reasoning_effort: "low" } : {}),
+        }),
+      });
 
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error("Groq API error response:", errText);
-      throw new Error(`Groq API error: ${res.statusText}`);
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        console.error(`Groq API error response [${model}]:`, res.status, errText);
+        lastError = new Error(`Groq API returned HTTP ${res.status} for ${model}`);
+        // 404/400 model_not_found → try next model in the pool; other errors are not model-related.
+        if (res.status === 404 || (res.status === 400 && errText.includes("model_not_found"))) continue;
+        throw lastError;
+      }
+
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) {
+        // Reasoning models can burn the whole budget on reasoning → retry next model
+        lastError = new Error("Empty AI response (token budget consumed by reasoning)");
+        continue;
+      }
+      cachedModel = model;
+      return content;
     }
-
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || "The AI Sensei remains silent for a moment. Try asking again.";
-  } catch (error) {
-    console.error("Failed to query Groq AI:", error);
-    return "Forgive me warrior, the cloud connection wavered. Ask your question once more.";
+    throw lastError || new Error("No Groq model available");
+  } catch (err: any) {
+    console.warn("Groq AI query unavailable, proceeding with fallback:", err?.message || err);
+    throw new Error(err?.message || "AI unavailable");
   }
 }
 
 /* ═══════════════════════════════════════════
-   PERSISTENT AI MENTOR (MASTER KAEL) RESPONSE
+   AI MENTOR RESPONSE
+   Professional IT career mentor
    ═══════════════════════════════════════════ */
 export async function getMentorResponse(
   userQuery: string,
@@ -62,21 +98,25 @@ export async function getMentorResponse(
     xp?: number;
     currentRoute?: string;
     completedMissions?: string[];
+    interests?: string[];
+    recommendedDomain?: string;
   },
   chatHistory: ChatMessage[] = []
 ): Promise<string> {
   const systemPrompt: ChatMessage = {
     role: "system",
-    content: `You are Master Kael, an ancient samurai sensei and elite tech mentor in CareerVerse — a gamified AI career platform.
-You combine samurai wisdom, honor, and sharp technical expertise (Software Engineering, System Architecture, Web Dev, DevOps, AI).
-The learner is named '${userContext.characterName || "Warrior"}' (Level ${userContext.level || 1} in ${userContext.realmName || "Backend Forge"}, ${userContext.xp || 0} XP).
-Current location on website: ${userContext.currentRoute || "/"}.
+    content: `You are an AI Career Mentor on CareerVerse — a platform that helps engineering students discover and prepare for IT careers.
+
+The student is named '${userContext.characterName || "Learner"}' (Level ${userContext.level || 1}, studying ${userContext.recommendedDomain || userContext.realmName || "IT"}, ${userContext.xp || 0} XP).
+Their interests: ${userContext.interests?.join(", ") || "exploring IT careers"}.
+Current page: ${userContext.currentRoute || "/"}.
 
 Guidelines:
-1. Always maintain the warrior/sensei theme (use terms like 'blade', 'trial', 'craft', 'realm', 'scrolls', 'forge').
-2. Provide concrete, accurate, professional, and practical advice to help them succeed in their technology career and learning journey.
-3. Be concise (2-4 sentences max unless explaining a complex technical detail).
-4. Direct them gently to the next step on CareerVerse (e.g. World Map, Dojo, AI Interview, Jobs tab).`,
+1. Be friendly, encouraging, and professional. Use simple language.
+2. Give practical, actionable advice for IT career development and learning.
+3. Keep responses concise (2-4 sentences unless explaining something complex).
+4. When relevant, suggest next steps on the platform (Learning Path, Practice Lab, Mock Interview, Jobs section).
+5. Focus on helping them become job-ready in their domain of interest.`,
   };
 
   const messages: ChatMessage[] = [
@@ -89,14 +129,14 @@ Guidelines:
 }
 
 /* ═══════════════════════════════════════════
-   AI INTERVIEW EVALUATOR WITH LIVE SCORING
+   AI INTERVIEW EVALUATOR
    ═══════════════════════════════════════════ */
 export interface InterviewScorecard {
-  technicalScore: number; // 0-100
-  problemSolvingScore: number; // 0-100
-  systemDesignScore: number; // 0-100
-  communicationScore: number; // 0-100
-  overallScore: number; // 0-100
+  technicalScore: number;
+  problemSolvingScore: number;
+  systemDesignScore: number;
+  communicationScore: number;
+  overallScore: number;
   verdict: "Pass" | "Requires Practice" | "Mastery Achieved";
   strengths: string[];
   improvements: string[];
@@ -111,13 +151,13 @@ export async function evaluateInterviewAnswer(
 ): Promise<InterviewScorecard> {
   const systemPrompt: ChatMessage = {
     role: "system",
-    content: `You are an elite Senior Staff Engineer and AI Technical Interviewer at a top tech company evaluating a candidate for the role of '${role}'.
-Evaluate the candidate's answer strictly based on industry standard principles.
+    content: `You are an experienced IT interviewer evaluating a candidate for '${role}'.
+Evaluate their answer fairly and constructively. Use simple, clear feedback.
 
-Question asked: "${question}"
-Candidate's response: "${userAnswer}"
+Question: "${question}"
+Answer: "${userAnswer}"
 
-Return ONLY a valid JSON object matching this exact structure:
+Return ONLY a valid JSON object:
 {
   "technicalScore": number (0-100),
   "problemSolvingScore": number (0-100),
@@ -125,12 +165,12 @@ Return ONLY a valid JSON object matching this exact structure:
   "communicationScore": number (0-100),
   "overallScore": number (0-100),
   "verdict": "Pass" | "Requires Practice" | "Mastery Achieved",
-  "strengths": ["bullet point 1", "bullet point 2"],
-  "improvements": ["bullet point 1", "bullet point 2"],
-  "feedback": "Concise summary of their response quality and key takeaways.",
-  "xpAwarded": number (50-250 based on overall score)
+  "strengths": ["strength 1", "strength 2"],
+  "improvements": ["area to improve 1", "area to improve 2"],
+  "feedback": "2-3 sentences of constructive feedback in simple language.",
+  "xpAwarded": number (50-250)
 }
-Do NOT wrap in markdown backticks. Return raw JSON string only.`,
+Do NOT wrap in markdown backticks. Return raw JSON only.`,
   };
 
   const response = await chatWithGroq([systemPrompt, { role: "user", content: "Evaluate now." }], 0.2);
@@ -139,8 +179,7 @@ Do NOT wrap in markdown backticks. Return raw JSON string only.`,
     const cleaned = response.replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(cleaned) as InterviewScorecard;
   } catch (err) {
-    console.error("Failed to parse AI interview JSON:", response, err);
-    // Fallback scorecard
+    console.error("Failed to parse interview scorecard:", response, err);
     return {
       technicalScore: 78,
       problemSolvingScore: 82,
@@ -148,16 +187,16 @@ Do NOT wrap in markdown backticks. Return raw JSON string only.`,
       communicationScore: 85,
       overallScore: 80,
       verdict: "Pass",
-      strengths: ["Clear logical structure", "Good core technical terminology"],
-      improvements: ["Elaborate on edge case handling", "Mention concurrency safeguards"],
-      feedback: "Solid attempt demonstrating a healthy understanding of software engineering fundamentals.",
+      strengths: ["Good understanding of core concepts", "Clear explanation structure"],
+      improvements: ["Cover edge cases", "Add more specific examples"],
+      feedback: "A solid answer showing good foundational knowledge. Try to include more concrete examples from real projects to strengthen your response.",
       xpAwarded: 150,
     };
   }
 }
 
 /* ═══════════════════════════════════════════
-   AGENTIC JOB & INTERNSHIP WEB SUGGESTION ENGINE
+   JOB & INTERNSHIP MATCHING ENGINE
    ═══════════════════════════════════════════ */
 export interface JobOpportunity {
   id: string;
@@ -166,7 +205,7 @@ export interface JobOpportunity {
   type: "Job" | "Internship" | "Contract";
   location: string;
   salaryOrStipend: string;
-  matchScore: number; // 0-100
+  matchScore: number;
   requiredSkills: string[];
   userSkillsMet: string[];
   skillGaps: string[];
@@ -181,36 +220,42 @@ export async function matchJobsWithUserSkills(
     level?: number;
     completedMissions?: string[];
     skills?: string[];
+    interests?: string[];
+    recommendedDomain?: string;
   }
 ): Promise<JobOpportunity[]> {
-  const userSkillsStr = (userProfile.skills || ["REST APIs", "SQL", "Database Design", "Node.js", "TypeScript", "HTTP Protocols"]).join(", ");
+  const domain = userProfile.recommendedDomain || userProfile.realmName || "Full-Stack Development";
+  const userSkillsStr = (userProfile.skills || ["HTML", "CSS", "JavaScript", "Problem Solving"]).join(", ");
+  const interestsStr = (userProfile.interests || []).join(", ");
 
   const systemPrompt: ChatMessage = {
     role: "system",
-    content: `You are an Agentic Tech Career Advisor and Web Job Scraper.
-The user has mastered these technical skills: [${userSkillsStr}].
-Current level: Level ${userProfile.level || 2} in domain ${userProfile.realmName || "Backend Engineering"}.
+    content: `You are an IT job matching advisor.
+The student has these skills: [${userSkillsStr}].
+Domain: ${domain}. Level: ${userProfile.level || 1}. Interests: ${interestsStr || "IT careers"}.
 
-Search your vast database of top tech opportunities and generate 4 realistic, high-value Job and Internship recommendations that suit their skill level.
+Generate 4 realistic IT job and internship recommendations suited to their level.
+Include a mix of entry-level jobs and internships.
+Use real company names where appropriate.
 
-Return ONLY a valid JSON array of objects matching this exact structure:
+Return ONLY a valid JSON array:
 [
   {
     "id": "job-1",
-    "title": "Junior Backend Developer",
-    "company": "Stripe / Cloudflare / Scale AI",
+    "title": "Junior Developer",
+    "company": "Company Name",
     "type": "Job" or "Internship",
-    "location": "Remote / Hybrid",
-    "salaryOrStipend": "$90,000 - $120,000 / yr" or "$4,500 / mo Stipend",
-    "matchScore": 88,
-    "requiredSkills": ["REST APIs", "SQL", "Node.js", "Redis"],
-    "userSkillsMet": ["REST APIs", "SQL", "Node.js"],
-    "userSkillGaps": ["Redis"],
-    "reason": "Your completion of the Database and API Gateway trials matches 88% of their requirements.",
-    "applyUrl": "https://careers.google.com"
+    "location": "Remote / City",
+    "salaryOrStipend": "$X / yr or $X / month",
+    "matchScore": 85,
+    "requiredSkills": ["skill1", "skill2"],
+    "userSkillsMet": ["skill1"],
+    "userSkillGaps": ["skill2"],
+    "reason": "Why this job fits their profile in simple language.",
+    "applyUrl": "https://careers.example.com"
   }
 ]
-Do NOT wrap in markdown backticks. Return raw JSON string only.`,
+Do NOT wrap in markdown backticks. Return raw JSON only.`,
   };
 
   const response = await chatWithGroq([systemPrompt, { role: "user", content: "Match opportunities now." }], 0.3);
@@ -220,77 +265,156 @@ Do NOT wrap in markdown backticks. Return raw JSON string only.`,
     const rawList = JSON.parse(cleaned);
     return rawList.map((item: any, idx: number) => ({
       id: item.id || `job-${idx + 1}`,
-      title: item.title || "Backend Engineer Intern",
-      company: item.company || "Vercel",
+      title: item.title || "Software Developer Intern",
+      company: item.company || "Tech Company",
       type: item.type || "Internship",
       location: item.location || "Remote",
-      salaryOrStipend: item.salaryOrStipend || "$4,000 / month",
-      matchScore: item.matchScore || 85,
-      requiredSkills: item.requiredSkills || ["Node.js", "SQL", "API Design"],
-      userSkillsMet: item.userSkillsMet || ["Node.js", "SQL"],
-      skillGaps: item.userSkillGaps || item.skillGaps || ["Kafka"],
-      reason: item.reason || "High compatibility based on your completed forge missions.",
-      applyUrl: item.applyUrl || "https://careers.vercel.com",
+      salaryOrStipend: item.salaryOrStipend || "$3,000 / month",
+      matchScore: item.matchScore || 80,
+      requiredSkills: item.requiredSkills || ["JavaScript", "Problem Solving"],
+      userSkillsMet: item.userSkillsMet || ["JavaScript"],
+      skillGaps: item.userSkillGaps || item.skillGaps || ["React"],
+      reason: item.reason || "Your skills and interests align well with this role.",
+      applyUrl: item.applyUrl || "https://careers.google.com",
     }));
   } catch (err) {
-    console.error("Failed to parse job match JSON:", response, err);
+    console.error("Failed to parse job matches:", response, err);
     return [
       {
         id: "job-1",
-        title: "Junior Backend Developer",
-        company: "Cloudflare",
+        title: `Junior ${domain} Developer`,
+        company: "Google",
         type: "Job",
         location: "Remote",
-        salaryOrStipend: "$95,000 - $115,000 / yr",
-        matchScore: 92,
-        requiredSkills: ["REST APIs", "SQL", "Node.js", "TypeScript"],
-        userSkillsMet: ["REST APIs", "SQL", "Node.js", "TypeScript"],
-        skillGaps: ["Cloudflare Workers"],
-        reason: "Your completed trials in API Gateways & SQL indexing perfectly align with Cloudflare's core requirements.",
-        applyUrl: "https://www.cloudflare.com/careers/",
+        salaryOrStipend: "$85,000 - $110,000 / yr",
+        matchScore: 88,
+        requiredSkills: ["JavaScript", "TypeScript", "REST APIs", "SQL"],
+        userSkillsMet: ["JavaScript", "TypeScript"],
+        skillGaps: ["System Design"],
+        reason: "Your learning progress in this domain makes you a great fit for entry-level roles.",
+        applyUrl: "https://careers.google.com",
       },
       {
         id: "job-2",
-        title: "Software Engineering Intern",
-        company: "Vercel",
+        title: `${domain} Intern`,
+        company: "Microsoft",
         type: "Internship",
-        location: "Remote",
+        location: "Remote / Hybrid",
         salaryOrStipend: "$5,000 / month",
-        matchScore: 86,
-        requiredSkills: ["TypeScript", "Next.js", "API Optimization"],
-        userSkillsMet: ["TypeScript", "API Optimization"],
-        skillGaps: ["Edge Middleware"],
-        reason: "Your high performance on frontend rendering speed quests makes you a prime candidate.",
-        applyUrl: "https://vercel.com/careers",
+        matchScore: 92,
+        requiredSkills: ["HTML", "CSS", "JavaScript", "Git"],
+        userSkillsMet: ["HTML", "CSS", "JavaScript"],
+        skillGaps: ["CI/CD Pipelines"],
+        reason: "Internship programs value enthusiasm and foundational skills — you're on the right track!",
+        applyUrl: "https://careers.microsoft.com",
       },
       {
         id: "job-3",
-        title: "AI Systems Engineering Trainee",
-        company: "Scale AI",
-        type: "Internship",
-        location: "San Francisco, CA / Remote",
-        salaryOrStipend: "$5,500 / month",
-        matchScore: 81,
-        requiredSkills: ["Python", "Groq/LLM APIs", "Data Pipelines"],
-        userSkillsMet: ["Groq/LLM APIs", "Data Pipelines"],
-        skillGaps: ["PyTorch"],
-        reason: "Your active use of AI roadmap generation and agentic prompts matches their internal AI operations team.",
-        applyUrl: "https://scale.com/careers",
+        title: "Software Engineering Trainee",
+        company: "Infosys",
+        type: "Job",
+        location: "Bangalore / Hybrid",
+        salaryOrStipend: "₹4.5L - ₹6L / yr",
+        matchScore: 85,
+        requiredSkills: ["Programming Fundamentals", "Data Structures", "Problem Solving"],
+        userSkillsMet: ["Programming Fundamentals", "Problem Solving"],
+        skillGaps: ["Advanced Data Structures"],
+        reason: "Training programs like this are perfect for fresh graduates building their career.",
+        applyUrl: "https://www.infosys.com/careers/",
       },
       {
         id: "job-4",
-        title: "Fullstack Guild Apprentice",
-        company: "GitHub",
-        type: "Job",
-        location: "Hybrid / Remote",
-        salaryOrStipend: "$105,000 / yr",
-        matchScore: 89,
-        requiredSkills: ["Git Workflows", "API Gateways", "Database Schema"],
-        userSkillsMet: ["API Gateways", "Database Schema"],
-        skillGaps: ["GraphQL"],
-        reason: "You have unlocked 4 out of 5 core developer milestones in the Backend Forge realm.",
-        applyUrl: "https://github.com/careers",
+        title: "Web Development Intern",
+        company: "Flipkart",
+        type: "Internship",
+        location: "Remote",
+        salaryOrStipend: "₹25,000 / month",
+        matchScore: 90,
+        requiredSkills: ["React", "JavaScript", "API Integration"],
+        userSkillsMet: ["JavaScript", "API Integration"],
+        skillGaps: ["React Advanced Patterns"],
+        reason: "Your web development interests and practice lab completions align with this opportunity.",
+        applyUrl: "https://www.flipkartcareers.com",
       },
+    ];
+  }
+}
+
+/* ═══════════════════════════════════════════
+   ADAPTIVE QUESTION GENERATOR
+   Generates questions that adapt to user progress
+   ═══════════════════════════════════════════ */
+export async function generateAdaptiveQuestion(
+  domain: string,
+  level: number,
+  previousTopics: string[]
+): Promise<{ question: string; options: string[]; correctIndex: number; explanation: string }> {
+  const systemPrompt: ChatMessage = {
+    role: "system",
+    content: `Generate a skill-check question for a student learning ${domain} at level ${level}/10.
+Previous topics: ${previousTopics.join(", ") || "None"}.
+Use simple language. Test practical understanding.
+
+Return ONLY valid JSON:
+{
+  "question": "Clear question text",
+  "options": ["A", "B", "C", "D"],
+  "correctIndex": 0,
+  "explanation": "Brief explanation of the answer"
+}
+Do NOT wrap in markdown backticks.`,
+  };
+
+  try {
+    const response = await chatWithGroq([systemPrompt, { role: "user", content: "Generate." }], 0.6);
+    const cleaned = response.replace(/```json/g, "").replace(/```/g, "").trim();
+    return JSON.parse(cleaned);
+  } catch {
+    return {
+      question: `What is the main purpose of ${domain}?`,
+      options: [
+        "Building user-facing applications",
+        "Managing server infrastructure",
+        "Analyzing data patterns",
+        "All of the above",
+      ],
+      correctIndex: 3,
+      explanation: `${domain} encompasses many aspects of building technology solutions.`,
+    };
+  }
+}
+
+/* ═══════════════════════════════════════════
+   LEARNING PATH RECOMMENDATION
+   ═══════════════════════════════════════════ */
+export async function recommendLearningPath(
+  domain: string,
+  level: number,
+  interests: string[],
+  completedTopics: string[]
+): Promise<string[]> {
+  const systemPrompt: ChatMessage = {
+    role: "system",
+    content: `Recommend 5 specific topics for a student to learn next.
+Domain: ${domain}. Level: ${level}/10.
+Interests: ${interests.join(", ")}.
+Already completed: ${completedTopics.join(", ") || "Nothing yet"}.
+
+Return ONLY a JSON array of 5 strings. Simple topic names.
+Do NOT wrap in markdown backticks.`,
+  };
+
+  try {
+    const response = await chatWithGroq([systemPrompt, { role: "user", content: "Recommend." }], 0.5);
+    const cleaned = response.replace(/```json/g, "").replace(/```/g, "").trim();
+    return JSON.parse(cleaned);
+  } catch {
+    return [
+      `${domain} fundamentals`,
+      "Building a small project",
+      "Version control with Git",
+      "Problem solving exercises",
+      "Reading documentation effectively",
     ];
   }
 }

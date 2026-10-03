@@ -5,12 +5,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 
 /* ═══════════════════════════════════════════
-   QUEST LOG — The Warrior's Journal
-   Shows completed quests, active missions,
-   and the user's story so far.
+   MY PROGRESS — Learning Journey Tracker
+   Shows completed topics, active learning,
+   and the user's progress so far.
    ═══════════════════════════════════════════ */
 
-interface QuestEntry {
+interface ProgressEntry {
   id: string;
   chapter: string;
   title: string;
@@ -20,70 +20,74 @@ interface QuestEntry {
   date?: string;
 }
 
-const questLog: QuestEntry[] = [
+const progressLog: ProgressEntry[] = [
   {
     id: "q1",
-    chapter: "Prologue",
-    title: "The Sensei's Questions",
-    description: "You answered the sensei's questions and revealed your nature. Your career path was forged based on your ambitions, strengths, and the domains that call to you.",
+    chapter: "Getting Started",
+    title: "Career Discovery Assessment",
+    description: "You answered AI-generated questions and discovered your ideal IT career path. Your personalized learning journey was created based on your interests and goals.",
     status: "completed",
     xp: 50,
     date: "Day 1",
   },
   {
     id: "q2",
-    chapter: "Chapter I",
-    title: "The Foundation Shrine",
-    description: "You learned the fundamentals of how servers receive and respond to requests. The HTTP protocol is now part of your arsenal.",
+    chapter: "Foundations",
+    title: "Understanding the Basics",
+    description: "You learned the fundamental concepts of how technology works — from web requests to data storage.",
     status: "completed",
     xp: 100,
     date: "Day 1",
   },
   {
     id: "q3",
-    chapter: "Chapter II",
-    title: "The First Query",
-    description: "Master Kael taught you the ancient language of SQL. You crafted your first queries and felt the database respond to your commands.",
+    chapter: "Building Skills",
+    title: "First Practical Project",
+    description: "You applied your knowledge by building your first small project, turning theory into practice.",
     status: "completed",
     xp: 150,
     date: "Day 2",
   },
   {
     id: "q4",
-    chapter: "Chapter III",
-    title: "Index of Knowledge",
-    description: "The archives are vast. Apply the art of indexing to make the database respond in heartbeats. Your current challenge awaits.",
+    chapter: "Going Deeper",
+    title: "Intermediate Concepts",
+    description: "Dive deeper into your chosen domain. Learn design patterns, best practices, and industry tools.",
     status: "active",
     xp: 200,
   },
   {
     id: "q5",
-    chapter: "Chapter IV",
-    title: "The API Gateway",
-    description: "Build RESTful endpoints that are both powerful and secure. This path opens after completing the current trial.",
+    chapter: "Real-World Ready",
+    title: "Portfolio Project",
+    description: "Build a substantial project that showcases your skills to potential employers.",
     status: "locked",
-    xp: 250,
+    xp: 300,
   },
   {
     id: "q6",
-    chapter: "Boss Battle",
-    title: "The Core Compiler",
-    description: "The corrupted compiler awaits at the peak. It will test everything you have learned.",
+    chapter: "Job Ready",
+    title: "Interview Prep & Applications",
+    description: "Practice mock interviews, polish your resume, and start applying to jobs and internships.",
     status: "locked",
     xp: 500,
   },
 ];
 
-export default function QuestLogPage() {
+const statusColors = {
+  completed: { dot: "bg-[#10b981]", text: "text-[#34d399]", border: "border-[#10b981]/20" },
+  active: { dot: "bg-[#06b6d4]", text: "text-[#22d3ee]", border: "border-[#06b6d4]/20" },
+  locked: { dot: "bg-[#3d3830]", text: "text-[#6b6358]", border: "border-[#2a2520]/20" },
+};
+
+export default function ProgressPage() {
   const { player } = useGame();
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  // Dynamically compute quest statuses from player progress
-  const liveQuests = useMemo(() => {
+  const liveEntries = useMemo(() => {
     const completed = new Set(player.completedMissions);
-    // Map quest IDs to mission IDs for status calculation
-    const questToMission: Record<string, string> = {
-      q1: "__onboarding__", // always completed if auth'd
+    const entryToMission: Record<string, string> = {
+      q1: "__onboarding__",
       q2: "m1",
       q3: "m2",
       q4: "backend-index-of-knowledge",
@@ -91,8 +95,8 @@ export default function QuestLogPage() {
       q6: "m5",
     };
     let foundActive = false;
-    return questLog.map((q) => {
-      const mId = questToMission[q.id];
+    return progressLog.map((q) => {
+      const mId = entryToMission[q.id];
       if (mId === "__onboarding__" && player.isAuthenticated) {
         return { ...q, status: "completed" as const };
       }
@@ -107,91 +111,111 @@ export default function QuestLogPage() {
     });
   }, [player.completedMissions, player.isAuthenticated]);
 
-  const completedXP = liveQuests
+  const completedXP = liveEntries
     .filter((q) => q.status === "completed")
     .reduce((sum, q) => sum + q.xp, 0);
+
+  const completedCount = liveEntries.filter((q) => q.status === "completed").length;
+  const progressPercent = Math.round((completedCount / liveEntries.length) * 100);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
       <div className="space-y-2 text-center">
-        <p className="font-mono text-[10px] text-[#6b6358] tracking-widest uppercase">
+        <span className="text-[10px] font-mono text-[#3b82f6] uppercase tracking-widest px-3 py-1 rounded-full border border-[#3b82f6]/30 bg-[#3b82f6]/10">
           Your Journey
-        </p>
-        <h1 className="font-cinzel text-2xl font-bold text-[#b49b64] tracking-wider">
-          The Quest Log
+        </span>
+        <h1 className="font-cinzel text-2xl font-bold text-[#e8dfc8] tracking-wider">
+          My Progress
         </h1>
-        <p className="font-cinzel text-xs text-[#6b6358] italic">
-          A record of every trial faced and every lesson earned
+        <p className="text-xs text-[#6b6358]">
+          Track your learning milestones and see how far you&apos;ve come
         </p>
       </div>
 
-      {/* Summary */}
-      <div className="flex items-center justify-center gap-8">
-        <div className="text-center">
-          <p className="font-mono text-lg font-bold text-[#b49b64]">{completedXP}</p>
-          <p className="font-mono text-[10px] text-[#6b6358]">XP Earned</p>
+      {/* Summary Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="surface-emerald rounded-xl p-4 text-center">
+          <p className="font-mono text-xl font-bold text-[#34d399]">{completedXP}</p>
+          <p className="text-[10px] text-[#6b6358]">XP Earned</p>
         </div>
-        <div className="w-px h-8 bg-[rgba(180,155,100,0.12)]" />
-        <div className="text-center">
-          <p className="font-mono text-lg font-bold text-[#4a7a5a]">
-            {liveQuests.filter((q) => q.status === "completed").length}
-          </p>
-          <p className="font-mono text-[10px] text-[#6b6358]">Completed</p>
+        <div className="surface-teal rounded-xl p-4 text-center">
+          <p className="font-mono text-xl font-bold text-[#22d3ee]">{completedCount}</p>
+          <p className="text-[10px] text-[#6b6358]">Completed</p>
         </div>
-        <div className="w-px h-8 bg-[rgba(180,155,100,0.12)]" />
-        <div className="text-center">
-          <p className="font-mono text-lg font-bold text-[#c8c0b0]">
-            {liveQuests.length}
-          </p>
-          <p className="font-mono text-[10px] text-[#6b6358]">Total</p>
+        <div className="surface-purple rounded-xl p-4 text-center">
+          <p className="font-mono text-xl font-bold text-[#c084fc]">{progressPercent}%</p>
+          <p className="text-[10px] text-[#6b6358]">Progress</p>
         </div>
       </div>
 
-      <div className="ink-divider" />
+      {/* Overall progress bar */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-[#6b6358]">Overall Progress</span>
+          <span className="text-[#22d3ee]">{progressPercent}%</span>
+        </div>
+        <div className="xp-track h-2.5 rounded-full">
+          <div
+            className="xp-fill-teal rounded-full transition-all duration-1000"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      </div>
 
-      {/* Quest entries */}
+      <div className="ink-divider-teal" />
+
+      {/* Progress entries */}
       <div className="space-y-3">
-        {liveQuests.map((q) => {
+        {liveEntries.map((q, idx) => {
           const isExpanded = expanded === q.id;
-          const isCompleted = q.status === "completed";
-          const isActive = q.status === "active";
+          const sc = statusColors[q.status];
           const isLocked = q.status === "locked";
 
           return (
-            <button
+            <motion.button
               key={q.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 * idx }}
               onClick={() => !isLocked && setExpanded(isExpanded ? null : q.id)}
-              className={`w-full text-left transition-all duration-200 rounded ${
-                isLocked ? "opacity-30 cursor-not-allowed" : "cursor-pointer"
+              className={`w-full text-left transition-all duration-200 rounded-xl ${
+                isLocked ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
               }`}
             >
-              <div className={`p-4 rounded ${
-                isActive ? "scroll-surface border-[#b49b64]/25" : "surface"
+              <div className={`p-4 rounded-xl border ${sc.border} ${
+                q.status === "active" ? "surface-teal" : "surface"
               }`}>
                 {/* Header row */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    {/* Status indicator */}
-                    <div className={`w-2 h-2 rounded-full ${
-                      isCompleted ? "bg-[#4a7a5a]" : isActive ? "bg-[#b49b64]" : "bg-[#3d3830]"
-                    }`} />
+                    {/* Status dot with connecting line */}
+                    <div className="flex flex-col items-center">
+                      <div className={`w-3 h-3 rounded-full ${sc.dot} ${q.status === "active" ? "animate-pulse" : ""}`} />
+                      {idx < liveEntries.length - 1 && (
+                        <div className={`w-0.5 h-4 mt-1 ${q.status === "completed" ? "bg-[#10b981]/30" : "bg-[#2a2520]/30"}`} />
+                      )}
+                    </div>
                     <div>
-                      <span className="font-mono text-[10px] text-[#6b6358] tracking-wider">
+                      <span className="text-[10px] text-[#6b6358] tracking-wider">
                         {q.chapter}
                       </span>
-                      <p className={`font-cinzel text-sm tracking-wider ${
-                        isActive ? "text-[#b49b64]" : isCompleted ? "text-[#c8c0b0]" : "text-[#6b6358]"
-                      }`}>
+                      <p className={`text-sm font-medium tracking-wide ${sc.text}`}>
                         {q.title}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     {q.date && (
-                      <span className="font-mono text-[10px] text-[#3d3830]">{q.date}</span>
+                      <span className="text-[10px] text-[#3d3830]">{q.date}</span>
                     )}
-                    <span className="font-mono text-[10px] text-[#b49b64]">+{q.xp} XP</span>
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                      q.status === "completed" ? "border-[#10b981]/20 bg-[#10b981]/10 text-[#34d399]" :
+                      q.status === "active" ? "border-[#06b6d4]/20 bg-[#06b6d4]/10 text-[#22d3ee]" :
+                      "border-[#2a2520]/20 bg-[#2a2520]/10 text-[#3d3830]"
+                    }`}>
+                      +{q.xp} XP
+                    </span>
                   </div>
                 </div>
 
@@ -204,16 +228,16 @@ export default function QuestLogPage() {
                       exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="mt-3 pt-3 border-t border-[rgba(180,155,100,0.08)]">
-                        <p className="font-cinzel text-xs text-[#6b6358] italic leading-relaxed">
-                          "{q.description}"
+                      <div className="mt-3 pt-3 border-t border-[#2a2520]/20">
+                        <p className="text-xs text-[#9a9182] leading-relaxed">
+                          {q.description}
                         </p>
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
-            </button>
+            </motion.button>
           );
         })}
       </div>
