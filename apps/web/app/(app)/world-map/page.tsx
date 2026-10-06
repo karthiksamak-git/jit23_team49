@@ -415,7 +415,6 @@ Return ONLY a valid JSON object:
         {/* Level Nodes */}
         <div className="relative z-20 w-full h-full min-h-[550px] lg:min-h-[calc(100vh-48px)]">
           {filteredMissions.map((m) => {
-            const colors = statusColor(m.status);
             const isBoss = m.type === "boss";
             const pngIcon = m.iconUrl || defaultIcons[m.iconKey] || "";
 
@@ -429,20 +428,18 @@ Return ONLY a valid JSON object:
                 style={{ left: `${m.x}%`, top: `${m.y}%` }}
               >
                 <div className="flex flex-col items-center gap-1.5">
-                  <div className={`${isBoss ? "w-16 h-16 shadow-[0_0_20px_rgba(244,63,94,0.4)]" : "w-12 h-12"} rounded-full ${colors.border} ${colors.bg} border-2 flex items-center justify-center p-2.5 transition-transform overflow-hidden bg-[#0c0e11] drop-shadow-xl`}>
-                    <img
-                      src={pngIcon}
-                      alt={m.title}
-                      suppressHydrationWarning
-                      className={`w-full h-full object-contain ${
-                        m.status === "completed"
-                          ? "brightness-125"
-                          : m.status === "locked"
-                          ? "grayscale opacity-55"
-                          : "brightness-110"
-                      }`}
-                    />
-                  </div>
+                  <img
+                    src={pngIcon}
+                    alt={m.title}
+                    suppressHydrationWarning
+                    className={`${isBoss ? "w-24 h-24" : "w-20 h-20"} object-contain transition-transform drop-shadow-xl ${
+                      m.status === "completed"
+                        ? "brightness-125"
+                        : m.status === "locked"
+                        ? "grayscale opacity-55"
+                        : "brightness-110"
+                    }`}
+                  />
 
                   <span className={`text-[10px] font-semibold tracking-wider whitespace-nowrap px-2.5 py-0.5 rounded-full border bg-[#040506]/90 backdrop-blur-sm ${
                     m.status === "active" ? "text-[#22d3ee] border-[#06b6d4]/40" : m.status === "completed" ? "text-[#34d399] border-[#10b981]/40" : "text-[#6b6358] border-[#2a2520]"
