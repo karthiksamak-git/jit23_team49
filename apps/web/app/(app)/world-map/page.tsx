@@ -6,6 +6,9 @@ import Link from "next/link";
 import { useGame } from "@/lib/game-context";
 import { chatWithGroq } from "@/lib/ai-client";
 
+/* Tiny blur-up placeholder: instant terrain paint while the webp loads (2.3MB png → 105KB webp) */
+const TERRAIN_BLUR = "data:image/jpeg;base64,/9j/2wBDABQODxIPDRQSEBIXFRQYHjIhHhwcHj0sLiQySUBMS0dARkVQWnNiUFVtVkVGZIhlbXd7gYKBTmCNl4x9lnN+gXz/2wBDARUXFx4aHjshITt8U0ZTfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHz/wAARCAASABgDASIAAhEBAxEB/8QAFwABAQEBAAAAAAAAAAAAAAAAAAMCBv/EAB0QAAICAgMBAAAAAAAAAAAAAAABAhEDMSEiQRL/xAAWAQEBAQAAAAAAAAAAAAAAAAAAAQL/xAAVEQEBAAAAAAAAAAAAAAAAAAAAEf/aAAwDAQACEQMRAD8A5qGNTl2aSKyxfEaVNEHkuqS4Kqakl4VmJdW9Uwam41xQCxCPppaAAy9gAD//2Q==";
+
 /* ═══════════════════════════════════════════
    DYNAMIC WORLD MAP & AI ROADMAP GENERATOR
    - Dynamic domain switching & AI custom roadmap generation
@@ -366,6 +369,18 @@ Return ONLY a valid JSON object:
       {/* ══════ CENTER — Dynamic Interactive Map ══════ */}
       <div className="flex-1 relative overflow-hidden min-h-[550px]">
         <div className="absolute inset-0 bg-[#040506]/25">
+          {/* Cinematic terrain backdrop (dark theme) */}
+          <img
+            src="/png/terrain-map.webp"
+            alt=""
+            aria-hidden="true"
+            decoding="async"
+            fetchPriority="low"
+            style={{ backgroundImage: `url(${TERRAIN_BLUR})`, backgroundSize: "cover", backgroundPosition: "center" }}
+            className="absolute inset-0 w-full h-full object-cover opacity-40"
+          />
+          {/* Dark veil so nodes/lines stay readable over the artwork */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#040506]/75 via-[#040506]/35 to-[#040506]/85" />
           <div className="absolute inset-0 opacity-[0.14]"
             style={{
               backgroundImage: `radial-gradient(circle at 25% 30%, rgba(6,182,212,0.35) 0%, transparent 50%),

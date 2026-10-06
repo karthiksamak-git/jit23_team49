@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { resolve } from "node:path";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { PrismaModule } from "./prisma/prisma.module";
 import { RedisModule } from "./redis/redis.module";
@@ -15,7 +16,10 @@ import { PortfolioModule } from "./modules/portfolio/portfolio.module";
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: [resolve(process.cwd(), ".env"), resolve(process.cwd(), "../../.env")],
+    }),
     EventEmitterModule.forRoot(),
     PrismaModule,
     RedisModule,

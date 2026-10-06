@@ -3,6 +3,12 @@ import {
   AssessmentType,
   MissionType,
 } from "@prisma/client";
+import { config } from "dotenv";
+import { resolve } from "node:path";
+
+// Make `npm run db:seed` work standalone (turbo doesn't forward root .env here)
+config({ path: resolve(__dirname, "../../../.env") });
+config({ path: resolve(process.cwd(), ".env") });
 
 const prisma = new PrismaClient();
 

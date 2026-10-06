@@ -47,3 +47,6 @@ coverage
 
 # Freebuff workspace logs
 .freebuff/
+
+# TypeScript build info
+*.tsbuildinfo

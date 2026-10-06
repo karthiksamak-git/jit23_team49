@@ -13,10 +13,10 @@
     "@careerverse/database": "*",
     "@careerverse/shared": "*",
     "@nestjs/common": "^10.4.15",
+    "@nestjs/config": "^3.3.0",
     "@nestjs/core": "^10.4.15",
     "@nestjs/event-emitter": "^2.1.1",
     "@nestjs/platform-express": "^10.4.15",
-    "@nestjs/config": "^3.3.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "ioredis": "^5.4.2",
@@ -30,6 +30,7 @@
     "@nestjs/schematics": "^10.2.3",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.2",
+    "dotenv": "^16.4.5",
     "typescript": "^5.7.2"
   }
 }
