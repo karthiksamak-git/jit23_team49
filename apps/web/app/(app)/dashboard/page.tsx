@@ -66,10 +66,10 @@ export default function DashboardPage() {
 
   const quickLinks = [
     { href: "/world-map", title: "Learning Path", description: "Follow your personalized roadmap", color: "surface-teal" },
-    { href: "/worlds/backend", title: "Practice Lab", description: "Hands-on coding challenges", color: "surface-purple" },
+    { href: "/sandbox", title: "Practice Lab", description: "Multi-language compiler & coding arena", color: "surface-purple" },
+    { href: "/worlds/backend", title: "The Dojo", description: "Backend missions & combat challenges", color: "surface-rose" },
     { href: "/interview", title: "Mock Interview", description: "AI-powered interview practice", color: "surface-amber" },
     { href: "/opportunities", title: "Jobs & Internships", description: "Find roles matching your skills", color: "surface-emerald" },
-    { href: "/sandbox", title: "Coding Sandbox", description: "Write and test code freely", color: "surface-rose" },
     { href: "/discover", title: "My Progress", description: "Track your learning journey", color: "surface-blue" },
   ];
 
@@ -229,7 +229,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
           {quickLinks.map((link, idx) => (
             <motion.div
-              key={link.href}
+              key={`quick-link-${link.title}-${link.href}`}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 * idx }}

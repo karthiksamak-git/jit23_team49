@@ -86,7 +86,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 const active = pathname === r.href || pathname?.startsWith(r.href + "/");
                 return (
                   <Link
-                    key={r.href}
+                    key={`nav-desktop-${r.href}`}
                     href={r.href}
                     onClick={() => sfx("click")}
                     onMouseEnter={() => sfx("hover")}
@@ -158,7 +158,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     const active = pathname === r.href;
                     return (
                       <Link
-                        key={r.href}
+                        key={`nav-mobile-${r.href}`}
                         href={r.href}
                         onClick={() => setMobileNav(false)}
                         className={`block px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
@@ -186,7 +186,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       )}
 
       {/* ══════ MAIN CONTENT ══════ */}
-      <main key={pathname} className={`page-enter relative z-10 min-h-screen ${isBoarding ? "pt-0" : "pt-14"}`}>
+      <main className={`page-enter relative z-10 min-h-screen ${isBoarding ? "pt-0" : "pt-14"}`}>
         {children}
       </main>
 
