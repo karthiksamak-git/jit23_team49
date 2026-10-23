@@ -118,14 +118,53 @@ function extractJson<T>(response: string): T {
 }
 
 /* ═══════════════════════════════════════════
+   DIFFICULTY CALIBRATION
+   Questions must match the student's onboarding
+   level — a Beginner gets beginner-friendly items.
+   ═══════════════════════════════════════════ */
+interface DifficultyBand {
+  labels: ChallengeDifficulty[];
+  guidance: string;
+}
+
+function difficultyBand(capacityLevel: string, studentLevel: string): DifficultyBand {
+  const c = capacityLevel.toLowerCase();
+  const l = studentLevel.toLowerCase();
+  if (l.includes("begin") || c.includes("novice")) {
+    return {
+      labels: ["Easier", "Standard"],
+      guidance: "BEGINNER-FRIENDLY REQUIRED: test only the absolute fundamentals of the chosen domain that a total beginner meets in their first days. Use plain everyday language, explain any technical term inline, keep code snippets under 3 lines, and avoid tricky \"gotcha\" distractors.",
+    };
+  }
+  if (l.includes("advanc") || c.includes("master")) {
+    return {
+      labels: ["Challenging", "Expert"],
+      guidance: "Advanced student: favour multi-step reasoning, edge cases and production-level pitfalls.",
+    };
+  }
+  return {
+    labels: ["Standard", "Challenging"],
+    guidance: "Intermediate student: balance fundamentals with light real-world complexity.",
+  };
+}
+
+function clampDifficulty(d: unknown, band: DifficultyBand): ChallengeDifficulty {
+  const v = typeof d === "string" ? (d as ChallengeDifficulty) : undefined;
+  if (v && band.labels.includes(v)) return v;
+  return band.labels.includes("Standard") ? "Standard" : band.labels[0];
+}
+
+/* ═══════════════════════════════════════════
    Generate mixed-type challenges matched to user capacity
    ═══════════════════════════════════════════ */
 export async function generateDojoChallenges(
   missionTitle: string,
   domain: string,
   lore: string,
-  capacityLevel: string = "Apprentice"
+  capacityLevel: string = "Apprentice",
+  studentLevel: string = ""
 ): Promise<DojoChallenge[]> {
+  const band = difficultyBand(capacityLevel, studentLevel);
   const systemPrompt: ChatMessage = {
     role: "system",
     content: `You are an AI IT Mentor generating a Duolingo-style interactive learning trial for an engineering student.
@@ -134,6 +173,11 @@ Domain: ${domain}
 Mission Title: ${missionTitle}
 Description/Lore: ${lore}
 Student Capacity: ${capacityLevel}
+Student Career Level: ${studentLevel || "Beginner"}
+
+DOMAIN STICKINESS RULE: every question MUST be strictly about "${domain}" — the exact path this student chose. Never ask about any other technology domain, even if the mission lore is broad.
+
+${band.guidance}
 
 Generate 4 distinct interactive questions with a mix of types:
 1. "multiple-choice" (practical concept reasoning)
@@ -163,6 +207,7 @@ Return ONLY a valid JSON array:
 
 Rules:
 - Exactly 4 questions with varied types
+- "difficulty" must be one of: ${band.labels.join(", ")}
 - "correct" must be an integer (0 to options.length - 1)
 - Options array must contain 3-4 options
 - Do NOT wrap in markdown backticks. Return raw JSON only.`,
@@ -176,7 +221,7 @@ Rules:
         .map((item, idx) => ({
           id: idx + 1,
           type: (item.type || (idx % 2 === 0 ? "multiple-choice" : "code-fill")) as QuestionType,
-          difficulty: item.difficulty || "Standard",
+          difficulty: clampDifficulty(item.difficulty, band),
           senseiSays: item.senseiSays || "Apply your core knowledge to master this challenge.",
           question: item.question || "Solve this technical challenge:",
           codeSnippet: item.codeSnippet,
@@ -274,6 +319,73 @@ function getEasierFallback(missedConcept: string): DojoChallenge {
 function getFallbackDojoChallenges(missionTitle: string, domain: string): DojoChallenge[] {
   const d = domain.toLowerCase();
 
+  // Full-Stack (checked before "web" so "Full-Stack Web Development" stays full-stack)
+  if (d.includes("full")) {
+    return [
+      {
+        id: 1,
+        type: "multiple-choice",
+        difficulty: "Standard",
+        senseiSays: "Full-stack means both sides of the wire. Start where the data enters the UI.",
+        question: "In a React form, how does a text input stay in sync with component state?",
+        options: [
+          "Set its value from state and update that state in the onChange handler",
+          "Write the value directly into the DOM with innerHTML",
+          "Only store a ref — state is never needed",
+          "Re-mount the component on every keystroke",
+        ],
+        correct: 0,
+        explanation: "A controlled input derives its value from React state, and onChange updates that state — one source of truth.",
+        conceptKey: "controlled_inputs",
+      },
+      {
+        id: 2,
+        type: "code-fill",
+        difficulty: "Standard",
+        senseiSays: "The server side of your app decides what each endpoint does.",
+        question: "Which HTTP method should create a new task and answer with 201 Created?",
+        codeSnippet: "___FILL___(\"/api/tasks\", (req, res) => res.status(201).json(task));",
+        options: ["app.post", "app.get", "app.delete", "app.head"],
+        correct: 0,
+        explanation: "POST is the semantics for creating a resource; 201 Created tells the client a new resource exists.",
+        conceptKey: "rest_endpoints",
+      },
+      {
+        id: 3,
+        type: "bug-hunt",
+        difficulty: "Standard",
+        senseiSays: "Never trust the browser — and never store secrets in the clear.",
+        question: "Spot the security bug in this signup handler:",
+        codeSnippet: "await db.users.insert({ email, password }); // password saved as plain text",
+        options: [
+          "Passwords must be hashed (e.g. with bcrypt) before storing them",
+          "There is no bug — plain text passwords are faster",
+          "The insert call must remove the await keyword",
+          "email should be stored as a number",
+        ],
+        correct: 0,
+        explanation: "Plaintext passwords leak in breaches; servers store a salted hash so the real password is never persisted.",
+        conceptKey: "password_hashing",
+      },
+      {
+        id: 4,
+        type: "multiple-choice",
+        difficulty: "Standard",
+        senseiSays: "Tokens need a home — pick the safest one you can.",
+        question: "Where should a web app keep a login token to be safer than localStorage?",
+        options: [
+          "In an httpOnly cookie set by the server",
+          "In localStorage on the client",
+          "In the URL query string",
+          "In a global JavaScript variable",
+        ],
+        correct: 0,
+        explanation: "httpOnly cookies are inaccessible to JavaScript, so an XSS bug cannot read the token out of the page.",
+        conceptKey: "token_storage",
+      },
+    ];
+  }
+
   if (d.includes("frontend") || d.includes("web")) {
     return [
       {
@@ -337,6 +449,338 @@ function getFallbackDojoChallenges(missionTitle: string, domain: string): DojoCh
         correct: 0,
         explanation: "Asynchronous data fetching flows sequentially: initiate request -> parse body -> update state.",
         conceptKey: "async_fetch",
+      },
+    ];
+  }
+
+  // Cybersecurity
+  if (d.includes("cyber") || d.includes("security")) {
+    return [
+      {
+        id: 1,
+        type: "multiple-choice",
+        difficulty: "Standard",
+        senseiSays: "Every security decision balances these three goals.",
+        question: "Which trio is known as the CIA triad of information security?",
+        options: [
+          "Confidentiality, Integrity, Availability",
+          "Code, Internet, Access",
+          "Cloud, Identity, Authentication",
+          "Control, Isolation, Audit",
+        ],
+        correct: 0,
+        explanation: "The CIA triad frames all security work: keep data secret (confidentiality), trustworthy (integrity) and reachable (availability).",
+        conceptKey: "cia_triad",
+      },
+      {
+        id: 2,
+        type: "scenario",
+        difficulty: "Standard",
+        senseiSays: "Humans are the most attacked component of any system.",
+        question: "An email urges you to click a link and 'confirm your password'. What do you do?",
+        options: [
+          "Ignore it and report it as phishing",
+          "Click the link and enter the password",
+          "Reply to the email with your password",
+          "Forward it to the whole team",
+        ],
+        correct: 0,
+        explanation: "Urgent credential requests are classic phishing; report it and verify through an official channel instead.",
+        conceptKey: "phishing",
+      },
+      {
+        id: 3,
+        type: "code-fill",
+        difficulty: "Standard",
+        senseiSays: "Servers store proofs of passwords, never passwords themselves.",
+        question: "Fill in the bcrypt call that hashes a password before storing it:",
+        codeSnippet: "const hash = await bcrypt.___FILL___(password, 10);",
+        options: ["hash", "encrypt", "plainify", "sign"],
+        correct: 0,
+        explanation: "bcrypt.hash(password, saltRounds) produces a salted hash; bcrypt is one-way, so the original password cannot be recovered.",
+        conceptKey: "password_hashing",
+      },
+      {
+        id: 4,
+        type: "multiple-choice",
+        difficulty: "Standard",
+        senseiSays: "Perimeter defence starts with traffic rules.",
+        question: "What is the primary job of a firewall?",
+        options: [
+          "Allow or block network traffic based on rules",
+          "Encrypt the files on disk",
+          "Generate strong passwords for users",
+          "Speed up the CPU",
+        ],
+        correct: 0,
+        explanation: "A firewall inspects packets and applies rules — permitting or dropping traffic between networks.",
+        conceptKey: "firewall",
+      },
+    ];
+  }
+
+  // Mobile App Development
+  if (d.includes("mobile") || d.includes("android") || d.includes("ios")) {
+    return [
+      {
+        id: 1,
+        type: "multiple-choice",
+        difficulty: "Standard",
+        senseiSays: "One codebase, two stores. That is the mobile superpower.",
+        question: "Which framework builds both Android and iOS apps from a single codebase?",
+        options: ["Flutter", "XAMPP", "MongoDB Compass", "Postman"],
+        correct: 0,
+        explanation: "Flutter compiles one Dart codebase to native Android and iOS apps.",
+        conceptKey: "cross_platform",
+      },
+      {
+        id: 2,
+        type: "scenario",
+        difficulty: "Standard",
+        senseiSays: "Mobile apps live on borrowed time — the system can pause them anytime.",
+        question: "What happens to a mobile app when the user switches to another app?",
+        options: [
+          "The OS may pause it, and later restores its saved state",
+          "The app is permanently deleted",
+          "All of its variables are instantly wiped",
+          "The screen stays on until the battery dies",
+        ],
+        correct: 0,
+        explanation: "Mobile OSes pause background apps to save battery; good apps persist state so it can be restored on return.",
+        conceptKey: "app_lifecycle",
+      },
+      {
+        id: 3,
+        type: "code-fill",
+        difficulty: "Standard",
+        senseiSays: "Small settings belong on the device, not the server.",
+        question: "Fill in the AsyncStorage call that stores the value \"dark\" under the key \"theme\":",
+        codeSnippet: "await AsyncStorage.___FILL___(\"theme\", \"dark\");",
+        options: ["setItem", "storeLocal", "saveKey", "persist"],
+        correct: 0,
+        explanation: "AsyncStorage.setItem(key, value) writes a small string to the device's persistent local storage.",
+        conceptKey: "local_storage",
+      },
+      {
+        id: 4,
+        type: "pseudocode-order",
+        difficulty: "Standard",
+        senseiSays: "Every data screen follows the same dance: load, fetch, render.",
+        question: "Order the steps of a mobile screen that loads data from an API:",
+        pseudocodeLines: [
+          "Screen mounts and shows a loading indicator",
+          "Fetch the data from the API",
+          "Store data in state and render the list",
+        ],
+        correctOrder: [0, 1, 2],
+        options: [
+          "1. Show Loading -> 2. Fetch API -> 3. Render List",
+          "1. Render List -> 2. Fetch API -> 3. Show Loading",
+          "1. Fetch API -> 2. Render List -> 3. Show Loading",
+          "1. Show Loading -> 2. Render List -> 3. Fetch API",
+        ],
+        correct: 0,
+        explanation: "The screen shows feedback first, fetches once mounted, then renders the fetched data.",
+        conceptKey: "screen_data_flow",
+      },
+    ];
+  }
+
+  // DevOps & Cloud
+  if (d.includes("devops") || d.includes("cloud") || d.includes("docker")) {
+    return [
+      {
+        id: 1,
+        type: "multiple-choice",
+        difficulty: "Standard",
+        senseiSays: "Containers are the shipping crates of software.",
+        question: "Which statement correctly describes a Docker image vs a container?",
+        options: [
+          "An image is a read-only template; a container is a running instance of it",
+          "A container is the template; an image is what is running",
+          "They are two names for the same thing",
+          "An image runs directly without any runtime",
+        ],
+        correct: 0,
+        explanation: "You build an image once, then start as many isolated containers from it as you need.",
+        conceptKey: "docker_basics",
+      },
+      {
+        id: 2,
+        type: "code-fill",
+        difficulty: "Standard",
+        senseiSays: "CI runs your tests so humans do not have to remember.",
+        question: "Which YAML key defines the shell command for a CI step?",
+        codeSnippet: "steps:\n  - ___FILL___ npm test",
+        options: ["run", "exec", "start", "cmd"],
+        correct: 0,
+        explanation: "In GitHub Actions each step uses 'run:' followed by the shell command to execute.",
+        conceptKey: "ci_pipeline",
+      },
+      {
+        id: 3,
+        type: "pseudocode-order",
+        difficulty: "Standard",
+        senseiSays: "Ship small, verify, then ship everywhere.",
+        question: "Order the steps of a safe rolling deployment:",
+        pseudocodeLines: [
+          "Deploy the new version to a small subset of servers",
+          "Run health checks against the new version",
+          "Shift 100% of traffic to the new version",
+        ],
+        correctOrder: [0, 1, 2],
+        options: [
+          "1. Canary Release -> 2. Health Checks -> 3. Full Rollout",
+          "1. Full Rollout -> 2. Canary Release -> 3. Health Checks",
+          "1. Health Checks -> 2. Full Rollout -> 3. Canary Release",
+          "1. Canary Release -> 2. Full Rollout -> 3. Health Checks",
+        ],
+        correct: 0,
+        explanation: "Start small, verify with health checks, then roll out widely — bad releases never reach all users.",
+        conceptKey: "rolling_deploy",
+      },
+      {
+        id: 4,
+        type: "multiple-choice",
+        difficulty: "Standard",
+        senseiSays: "Where your servers live still matters in the cloud.",
+        question: "What does choosing a 'region' on a cloud provider mean?",
+        options: [
+          "The physical datacenter location where your resources run",
+          "The programming language runtime",
+          "Your billing plan tier",
+          "The number of CPU cores",
+        ],
+        correct: 0,
+        explanation: "A region is a geographic datacenter area — closer regions mean lower latency for your users.",
+        conceptKey: "cloud_regions",
+      },
+    ];
+  }
+
+  // AI & Machine Learning
+  if (d.includes("machine") || d.includes("artificial") || d.includes("neural") || /\bai\b/.test(d)) {
+    return [
+      {
+        id: 1,
+        type: "multiple-choice",
+        difficulty: "Standard",
+        senseiSays: "Labels turn examples into lessons for the model.",
+        question: "You have 10,000 emails labelled 'spam' or 'not spam'. Which approach fits?",
+        options: [
+          "Supervised learning — train on the labelled examples",
+          "Unsupervised clustering — labels are not needed",
+          "Reinforcement learning — reward the inbox",
+          "No learning — rules are always better",
+        ],
+        correct: 0,
+        explanation: "Supervised learning trains on input/output pairs, which is exactly what labelled emails provide.",
+        conceptKey: "supervised_learning",
+      },
+      {
+        id: 2,
+        type: "multiple-choice",
+        difficulty: "Standard",
+        senseiSays: "Memorising is not understanding — watch the gap.",
+        question: "A model scores 99% on training data but 60% on new data. What is this called?",
+        options: [
+          "Overfitting — it memorised the training data",
+          "Underfitting — it needs more epochs on the same data",
+          "Perfect deployment",
+          "Data labelling",
+        ],
+        correct: 0,
+        explanation: "A large train/test gap means overfitting; regularization or more data helps the model generalise.",
+        conceptKey: "overfitting",
+      },
+      {
+        id: 3,
+        type: "code-fill",
+        difficulty: "Standard",
+        senseiSays: "Reproducible experiments need fixed randomness.",
+        question: "Fill in the parameter that makes this train/test split reproducible:",
+        codeSnippet: "train_test_split(X, y, test_size=0.2, ___FILL___=42)",
+        options: ["random_state", "seed_fn", "shuffle_seed", "variance"],
+        correct: 0,
+        explanation: "random_state fixes the shuffle seed, so every run splits the data identically.",
+        conceptKey: "reproducibility",
+      },
+      {
+        id: 4,
+        type: "multiple-choice",
+        difficulty: "Standard",
+        senseiSays: "Honest evaluation needs unseen data.",
+        question: "Why keep a test set separate from the training data?",
+        options: [
+          "To measure performance on data the model has never seen",
+          "To make training faster",
+          "To increase the dataset size",
+          "To store the labels safely",
+        ],
+        correct: 0,
+        explanation: "Testing on unseen data estimates how the model will behave on real-world examples.",
+        conceptKey: "test_set",
+      },
+    ];
+  }
+
+  // Data Science & Analytics
+  if (d.includes("data")) {
+    return [
+      {
+        id: 1,
+        type: "multiple-choice",
+        difficulty: "Standard",
+        senseiSays: "Group, then aggregate — the bread and butter of analysis.",
+        question: "In pandas, what does df.groupby('city')['sales'].sum() produce?",
+        options: [
+          "Total sales for each city",
+          "A list of cities sorted alphabetically",
+          "A chart of sales over time",
+          "Only the unique city names",
+        ],
+        correct: 0,
+        explanation: "groupby splits rows by city, and sum() aggregates the sales column within each group.",
+        conceptKey: "groupby",
+      },
+      {
+        id: 2,
+        type: "scenario",
+        difficulty: "Standard",
+        senseiSays: "Correlation is a clue, not a verdict.",
+        question: "Ice-cream sales and drownings both rise in summer. What can you conclude?",
+        options: [
+          "A third factor (summer) likely drives both — correlation is not causation",
+          "Eating ice cream causes drowning",
+          "Drowning causes ice-cream sales",
+          "The dataset must be broken",
+        ],
+        correct: 0,
+        explanation: "Two trends moving together do not prove cause and effect; investigate confounding factors first.",
+        conceptKey: "correlation_causation",
+      },
+      {
+        id: 3,
+        type: "code-fill",
+        difficulty: "Standard",
+        senseiSays: "Aggregation across rows needs one specific clause.",
+        question: "Fill in the SQL clause that counts users per city:",
+        codeSnippet: "SELECT city, COUNT(*) FROM users ___FILL___ city;",
+        options: ["GROUP BY", "SORT BY", "UNIQUE BY", "TOTAL BY"],
+        correct: 0,
+        explanation: "GROUP BY collapses rows sharing a city so aggregate functions like COUNT(*) run per group.",
+        conceptKey: "sql_grouping",
+      },
+      {
+        id: 4,
+        type: "multiple-choice",
+        difficulty: "Standard",
+        senseiSays: "Pick the chart that answers the question being asked.",
+        question: "Which chart best shows how a metric changes over time?",
+        options: ["A line chart", "A pie chart", "A word cloud", "A choropleth map"],
+        correct: 0,
+        explanation: "Line charts connect points in time, making trends and seasonality easy to spot.",
+        conceptKey: "chart_choice",
       },
     ];
   }

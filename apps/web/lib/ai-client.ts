@@ -1,26 +1,9 @@
 /* ═══════════════════════════════════════════
    GROQ AI CLIENT LAYER
-   High-speed inference powered by Groq Llama 3.3 70B
+   Calls our own /api/ai proxy — the Groq API
+   key stays on the server and is never shipped
+   to the browser.
    ═══════════════════════════════════════════ */
-
-const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-
-/**
- * Groq model pool, tried in order.
- * - GROQ_MODEL env var can override the primary model.
- * - `llama-3.3-70b-versatile` was decommissioned for free/dev tiers on Aug 16, 2026,
- *   so the pool now leads with GPT-OSS models and self-heals if one is unavailable.
- */
-const GROQ_MODEL_POOL = [
-  process.env.GROQ_MODEL || process.env.NEXT_PUBLIC_GROQ_MODEL,
-  "openai/gpt-oss-120b",
-  "openai/gpt-oss-20b",
-  "llama-3.3-70b-versatile",
-].filter(Boolean) as string[];
-
-let cachedModel: string | null = null;
-
-export const activeGroqModel = (): string => cachedModel || GROQ_MODEL_POOL[0];
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -28,57 +11,21 @@ export interface ChatMessage {
 }
 
 export async function chatWithGroq(messages: ChatMessage[], temperature = 0.7): Promise<string> {
-  const apiKey =
-    process.env.NEXT_PUBLIC_GROQ_API_KEY ||
-    process.env.GROQ_API_KEY ||
-    "";
-
-  if (!apiKey) {
-    throw new Error("Groq API Key missing");
-  }
-
   try {
-    let lastError: Error | null = null;
-    // Try each model in the pool; cache the first that works so later calls skip failures.
-    const candidates = cachedModel ? [cachedModel] : GROQ_MODEL_POOL;
-    for (const model of candidates) {
-      const res = await fetch(GROQ_API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          temperature,
-          max_tokens: 2048,
-          // GPT-OSS models are reasoning models — keep reasoning minimal so the
-          // answer fits in the token budget and latency stays low.
-          ...(model.includes("gpt-oss") ? { reasoning_effort: "low" } : {}),
-        }),
-      });
+    const res = await fetch("/api/ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages, temperature }),
+    });
 
-      if (!res.ok) {
-        const errText = await res.text().catch(() => "");
-        console.error(`Groq API error response [${model}]:`, res.status, errText);
-        lastError = new Error(`Groq API returned HTTP ${res.status} for ${model}`);
-        // 404/400 model_not_found → try next model in the pool; other errors are not model-related.
-        if (res.status === 404 || (res.status === 400 && errText.includes("model_not_found"))) continue;
-        throw lastError;
-      }
-
-      const data = await res.json();
-      const content = data.choices?.[0]?.message?.content;
-      if (!content) {
-        // Reasoning models can burn the whole budget on reasoning → retry next model
-        lastError = new Error("Empty AI response (token budget consumed by reasoning)");
-        continue;
-      }
-      cachedModel = model;
-      return content;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data?.error || `AI proxy returned HTTP ${res.status}`);
     }
-    throw lastError || new Error("No Groq model available");
+    if (!data?.content) {
+      throw new Error("Empty AI response");
+    }
+    return data.content as string;
   } catch (err: any) {
     console.warn("Groq AI query unavailable, proceeding with fallback:", err?.message || err);
     throw new Error(err?.message || "AI unavailable");
@@ -224,7 +171,7 @@ export async function matchJobsWithUserSkills(
     recommendedDomain?: string;
   }
 ): Promise<JobOpportunity[]> {
-  const domain = userProfile.recommendedDomain || userProfile.realmName || "Full-Stack Development";
+  const domain = userProfile.recommendedDomain || userProfile.realmName || "IT Fundamentals";
   const userSkillsStr = (userProfile.skills || ["HTML", "CSS", "JavaScript", "Problem Solving"]).join(", ");
   const interestsStr = (userProfile.interests || []).join(", ");
 

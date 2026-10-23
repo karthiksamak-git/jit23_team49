@@ -131,12 +131,15 @@ export function useGame() {
 
 function loadFromStorage(): PlayerState {
   if (typeof window === "undefined") return defaultPlayer;
+  // The latest onboarding profile always wins over stale stored values so the
+  // World Map / Dashboard / Dojo open the path the student actually chose.
+  const onboarding = loadOnboardingProfile();
   try {
     const raw = localStorage.getItem("cv_player_state");
     if (raw) {
       const parsed = JSON.parse(raw);
       // Ensure new fields exist (migration)
-      return { ...defaultPlayer, ...parsed };
+      return { ...defaultPlayer, ...parsed, ...onboarding };
     }
   } catch {}
   // Legacy migration
@@ -155,9 +158,10 @@ function loadFromStorage(): PlayerState {
       realmFit: 85,
       realmName: "Backend Development",
       completedMissions: [],
+      ...onboarding,
     };
   }
-  return defaultPlayer;
+  return { ...defaultPlayer, ...onboarding };
 }
 
 function loadOnboardingProfile(): Partial<PlayerState> {
@@ -318,7 +322,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       streak: Math.max(stored.streak || 1, 1),
       coins: stored.coins || 20,
       realmFit: stored.realmFit || 85,
-      realmName: onboardingData.recommendedDomain || stored.realmName || "Full-Stack Development",
+      realmName: onboardingData.recommendedDomain || stored.realmName || "Exploring",
       completedMissions: stored.completedMissions || [],
     };
     setPlayer(newState);
@@ -353,7 +357,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       streak: 1,
       coins: 20,
       realmFit: 85,
-      realmName: onboardingData.recommendedDomain || "Full-Stack Development",
+      realmName: onboardingData.recommendedDomain || "Exploring",
       completedMissions: [],
     });
   }, []);

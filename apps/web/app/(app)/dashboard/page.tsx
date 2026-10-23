@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 import { generateDailyRecommendations, LearningRecommendation } from "@/lib/ai-learning-engine";
+import { matchRealmId, BUILT_IN_REALMS } from "@/lib/realm-match";
 
 /* ═══════════════════════════════════════════
    PERSONALIZED DASHBOARD
@@ -34,13 +35,19 @@ export default function DashboardPage() {
 
   const dColor = domainColorMap[player.domainColor] || domainColorMap.teal;
 
+  /* If the recommendation has no built-in realm, "Continue Learning" opens
+     the AI forge (prefilled) instead of dumping the user on another path. */
+  const recommendedDomain = player.recommendedDomain || player.realmName || "";
+  const hasRealm = !!matchRealmId(recommendedDomain, BUILT_IN_REALMS);
+  const continueHref = recommendedDomain && !hasRealm ? "/world-map?forge=1" : "/world-map";
+
   useEffect(() => {
     async function loadRecs() {
       setLoadingRecs(true);
       try {
         const recs = await generateDailyRecommendations({
           name: player.characterName,
-          domain: player.recommendedDomain || player.realmName || "Full-Stack Development",
+          domain: player.recommendedDomain || player.realmName || "IT Fundamentals",
           level: player.level,
           interests: player.interests || [],
           completedTopics: player.completedMissions || [],
@@ -95,11 +102,11 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-3">
             <Link
-              href="/world-map"
+              href={continueHref}
               onClick={() => sfx("click")}
               className="btn-primary px-6 py-3 rounded-xl text-xs font-semibold uppercase tracking-wider"
             >
-              <span>Continue Learning →</span>
+              <span>{hasRealm ? "Continue Learning →" : "Forge My Roadmap →"}</span>
             </Link>
           </div>
         </div>

@@ -37,13 +37,17 @@ const XP_COMBO_3 = 5;
 const XP_COMBO_5 = 15;
 const XP_SESSION_BONUS = 20;
 
+// Victory requires mastering at least this share of the trial's concepts
+// (correct first-try answers + mistakes cleared in Fix-Your-Mistakes).
+const MASTERY_PASS = 0.6;
+
 function DojoContent() {
   const searchParams = useSearchParams();
   const { completeMission, addXp, player, sfx } = useGame();
 
   const missionId = searchParams.get("missionId") || "m1";
   const missionTitle = searchParams.get("title") || "Foundations Trial";
-  const domain = searchParams.get("domain") || player.recommendedDomain || player.realmName || "Backend Development";
+  const domain = searchParams.get("domain") || player.recommendedDomain || player.realmName || "Software Engineering Foundations";
   const lore = searchParams.get("lore") || "Test your practical knowledge and prove your competence.";
 
   const [challenges, setChallenges] = useState<DojoChallenge[]>([]);
@@ -64,6 +68,8 @@ function DojoContent() {
   const [combo, setCombo] = useState(0);
   const [bestCombo, setBestCombo] = useState(0);
   const [sessionXp, setSessionXp] = useState(0);
+  const [mainCorrect, setMainCorrect] = useState(0);
+  const [defeatCause, setDefeatCause] = useState<"hearts" | "mastery">("hearts");
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [isGeneratingRetry, setIsGeneratingRetry] = useState(false);
@@ -83,7 +89,13 @@ function DojoContent() {
     async function loadChallenges() {
       setLoading(true);
       try {
-        const generated = await generateDojoChallenges(missionTitle, domain, lore, player.capacityLevel || "Apprentice");
+        const generated = await generateDojoChallenges(
+          missionTitle,
+          domain,
+          lore,
+          player.capacityLevel || "Apprentice",
+          player.difficultyLevel || "Beginner"
+        );
         setChallenges(generated.slice(0, 7));
       } catch (err) {
         console.error("Failed to load Dojo challenges:", err);
@@ -92,7 +104,7 @@ function DojoContent() {
       }
     }
     loadChallenges();
-  }, [missionTitle, domain, lore, player.capacityLevel]);
+  }, [missionTitle, domain, lore, player.capacityLevel, player.difficultyLevel]);
 
   /* ── +50 level-up fanfare ── */
   useEffect(() => {
@@ -117,6 +129,7 @@ function DojoContent() {
       sfx("victory");
     } else if (phase === "defeat") {
       sfx("defeat");
+      if (sessionXp > 0) addXp(sessionXp); // earned XP still counts on a failed trial
     }
   }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -174,6 +187,7 @@ function DojoContent() {
     recordAnswer(current.conceptKey, isCorrect, responseMs);
 
     if (isCorrect) {
+      setMainCorrect((c) => c + 1);
       const newCombo = combo + 1;
       setCombo(newCombo);
       setBestCombo((b) => Math.max(b, newCombo));
@@ -227,6 +241,7 @@ function DojoContent() {
     }
 
     if (hearts <= 0) {
+      setDefeatCause("hearts");
       setPhase("defeat");
       return;
     }
@@ -238,8 +253,12 @@ function DojoContent() {
       setMistakeIdx(0);
       setCurrent(mistakes[0]);
       setPhase("mistakes");
-    } else {
+    } else if ((mainCorrect + clearedMistakes) / Math.max(1, totalPlanned) >= MASTERY_PASS) {
       setPhase("victory");
+    } else {
+      // Failed the mastery bar — not every completed trial is a victory.
+      setDefeatCause("mastery");
+      setPhase("defeat");
     }
   }
 
@@ -335,14 +354,19 @@ function DojoContent() {
       setMistakeIdx(nextIdx);
       setCurrent(mistakeQueue[nextIdx]);
       questionStart.current = Date.now();
-    } else {
+    } else if ((mainCorrect + clearedMistakes) / Math.max(1, totalPlanned) >= MASTERY_PASS) {
       setPhase("victory");
+    } else {
+      // Cleared the queue but too many concepts were never mastered.
+      setDefeatCause("mastery");
+      setPhase("defeat");
     }
   }
 
   const totalLessonSteps = totalPlanned + mistakeQueue.length;
   const progress = Math.min(100, ((answeredCount + mistakeIdx) / Math.max(1, totalLessonSteps)) * 100);
   const timePct = (timeLeft / QUESTION_TIME) * 100;
+  const victoryBonus = sessionXp > 0 ? XP_SESSION_BONUS : 0;
 
   const isTrueFalse = current?.type === "true-false";
 
@@ -368,6 +392,56 @@ function DojoContent() {
   return (
     <div className="min-h-[calc(100vh-48px)] flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-2xl">
+        {/* Stable session HUD — deliberately OUTSIDE the per-question animated card so the
+            timer always renders the live value and never a stale snapshot while question cards swap. */}
+        {phase === "battle" && current && (
+          <div className="surface rounded-2xl p-4 md:p-5 mb-4 border border-[#2a2520] space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-1">
+                {Array.from({ length: MAX_HEARTS }).map((_, i) => (
+                  <span key={i} className={`text-sm transition-all ${i < hearts ? "opacity-100 scale-100" : "opacity-20 scale-90 grayscale"}`}>
+                    ❤️
+                  </span>
+                ))}
+              </div>
+
+              {combo >= 3 && (
+                <motion.span
+                  key={combo}
+                  initial={{ scale: 1.5 }}
+                  animate={{ scale: 1 }}
+                  className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#f97316]/15 border border-[#f97316]/40 text-[#fdba74] animate-pulse"
+                >
+                  🔥 {combo} COMBO
+                </motion.span>
+              )}
+
+              {/* Timer ring */}
+              <div className="relative w-11 h-11">
+                <svg viewBox="0 0 40 40" className="w-11 h-11 -rotate-90">
+                  <circle cx="20" cy="20" r="17" fill="none" stroke="#2a2520" strokeWidth="3" />
+                  <circle
+                    cx="20" cy="20" r="17" fill="none"
+                    stroke={timeLeft <= 5 ? "#fb7185" : timeLeft <= 10 ? "#fbbf24" : "#22d3ee"}
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 17}
+                    strokeDashoffset={2 * Math.PI * 17 * (1 - timePct / 100)}
+                    className="transition-all duration-1000 ease-linear"
+                  />
+                </svg>
+                <span className={`absolute inset-0 flex items-center justify-center font-mono text-[11px] font-bold ${timeLeft <= 5 ? "text-[#fb7185] animate-pulse" : "text-[#c8c0b0]"}`}>
+                  {timeLeft}
+                </span>
+              </div>
+            </div>
+
+            {/* Progress */}
+            <div className="xp-track h-1.5 rounded-full overflow-hidden">
+              <div className="xp-fill-teal rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        )}
         <AnimatePresence mode="wait">
 
           {/* ══════ INTRO ══════ */}
@@ -428,51 +502,9 @@ function DojoContent() {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-6 surface rounded-2xl p-6 md:p-8 border border-[#2a2520]"
             >
-              {/* HUD row: hearts, combo, timer */}
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: MAX_HEARTS }).map((_, i) => (
-                    <span key={i} className={`text-sm transition-all ${i < hearts ? "opacity-100 scale-100" : "opacity-20 scale-90 grayscale"}`}>
-                      ❤️
-                    </span>
-                  ))}
-                </div>
-
-                {combo >= 3 && (
-                  <motion.span
-                    key={combo}
-                    initial={{ scale: 1.5 }}
-                    animate={{ scale: 1 }}
-                    className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#f97316]/15 border border-[#f97316]/40 text-[#fdba74] animate-pulse"
-                  >
-                    🔥 {combo} COMBO
-                  </motion.span>
-                )}
-
-                {/* Timer ring */}
-                <div className="relative w-11 h-11">
-                  <svg viewBox="0 0 40 40" className="w-11 h-11 -rotate-90">
-                    <circle cx="20" cy="20" r="17" fill="none" stroke="#2a2520" strokeWidth="3" />
-                    <circle
-                      cx="20" cy="20" r="17" fill="none"
-                      stroke={timeLeft <= 5 ? "#fb7185" : timeLeft <= 10 ? "#fbbf24" : "#22d3ee"}
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeDasharray={2 * Math.PI * 17}
-                      strokeDashoffset={2 * Math.PI * 17 * (1 - timePct / 100)}
-                      className="transition-all duration-1000 ease-linear"
-                    />
-                  </svg>
-                  <span className={`absolute inset-0 flex items-center justify-center font-mono text-[11px] font-bold ${timeLeft <= 5 ? "text-[#fb7185] animate-pulse" : "text-[#c8c0b0]"}`}>
-                    {timeLeft}
-                  </span>
-                </div>
-              </div>
-
-              {/* Progress */}
-              <div className="xp-track h-1.5 rounded-full overflow-hidden">
-                <div className="xp-fill-teal rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
-              </div>
+              {/* Session HUD (hearts / combo / timer ring / progress) is rendered in the
+                  stable bar above, outside the per-question AnimatePresence card, so the
+                  timer never displays a stale value when a new question mounts. */}
 
               {/* Question */}
               <div className="space-y-3">
@@ -711,7 +743,7 @@ function DojoContent() {
               <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
                 <div className="surface rounded-xl p-3 border border-[#06b6d4]/20 space-y-1">
                   <span className="text-[9px] text-[#6b6358] block">SESSION XP</span>
-                  <span className="font-mono text-base font-bold text-[#22d3ee]">+{sessionXp + XP_SESSION_BONUS}</span>
+                  <span className="font-mono text-base font-bold text-[#22d3ee]">+{sessionXp + victoryBonus}</span>
                 </div>
                 <div className="surface rounded-xl p-3 border border-[#f97316]/20 space-y-1">
                   <span className="text-[9px] text-[#6b6358] block">BEST COMBO</span>
@@ -724,7 +756,7 @@ function DojoContent() {
               </div>
 
               <p className="text-[10px] font-mono text-[#3d3830]">
-                incl. +{XP_SESSION_BONUS} session completion bonus
+                incl. +{victoryBonus} session completion bonus
               </p>
 
               {stillFailing.length > 0 && (
@@ -752,11 +784,15 @@ function DojoContent() {
             >
               <div className="space-y-2">
                 <span className="text-[10px] font-mono text-[#fb7185] uppercase tracking-widest px-3 py-1 rounded-full border border-[#fb7185]/30 bg-[#fb7185]/10">
-                  Session Ended Early
+                  {defeatCause === "hearts" ? "Session Ended Early" : "Mastery Bar Not Reached"}
                 </span>
-                <h1 className="font-cinzel text-3xl font-extrabold text-[#fb7185]" style={{ textShadow: "0 0 30px rgba(251,113,133,0.4)" }}>Out of Hearts</h1>
+                <h1 className="font-cinzel text-3xl font-extrabold text-[#fb7185]" style={{ textShadow: "0 0 30px rgba(251,113,133,0.4)" }}>
+                  {defeatCause === "hearts" ? "Out of Hearts" : "Trial Not Cleared"}
+                </h1>
                 <p className="text-xs text-[#6b6358] max-w-sm mx-auto">
-                  Every mistake is a step toward mastery! Your weak topics are queued for review — come back stronger.
+                  {defeatCause === "hearts"
+                    ? "Every mistake is a step toward mastery! Your weak topics are queued for review — come back stronger."
+                    : `You mastered ${mainCorrect + clearedMistakes} of ${totalPlanned} concepts — you need ${Math.ceil(totalPlanned * MASTERY_PASS)} to clear this trial. Your weak topics are queued for review, so train again!`}
                 </p>
               </div>
 
@@ -779,6 +815,8 @@ function DojoContent() {
                   setAnsweredCount(0);
                   setCombo(0);
                   setSessionXp(0);
+                  setMainCorrect(0);
+                  setDefeatCause("hearts");
                   setMistakeQueue([]);
                   setStillFailing([]);
                   setClearedMistakes(0);

@@ -73,8 +73,8 @@ Instead of static tutorials or generic questionnaires, CareerVerse uses **Groq L
 Create `.env` and `apps/web/.env.local` with your Groq API Key:
 ```env
 GROQ_API_KEY="your_groq_api_key_here"
-NEXT_PUBLIC_GROQ_API_KEY="your_groq_api_key_here"
 ```
+> 🔐 Keep the key server-side only. The web app calls the `/api/ai` proxy route, which reads `GROQ_API_KEY` on the server — never prefix it with `NEXT_PUBLIC_`, that would ship your key to every browser.
 
 ### 3. Start Development Server
 ```bash

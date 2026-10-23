@@ -1,29 +1,45 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { CleanNarratorImg } from "@/lib/clean-samurai";
+import { useGame } from "@/lib/game-context";
 import {
   generateFirstQuestion,
   generateNextQuestion,
   analyzeUserProfile,
+  analyzeFreeText,
+  profileFromRecommendation,
   OnboardingQuestion,
   OnboardingProfile,
+  CareerRecommendation,
 } from "@/lib/ai-onboarding";
 
 /* ═══════════════════════════════════════════
    AI-POWERED ONBOARDING WITH NARRATOR SENSEI
-   Standing Narrator PNG at bottom-left corner
-   + Pop-up Speech Bubble Narration Box with typewriter text.
-   Questions generated dynamically by AI for each user.
+   Click-to-select options (auto-advances for
+   single-select). Ranked recommendations from
+   the career taxonomy — no forced default path.
+   Follows up with a free-text question when
+   responses don't match any domain, and gives
+   a plain (roadmap-free) suggestion when the
+   interest is fully outside engineering.
    ═══════════════════════════════════════════ */
 
 const TOTAL_QUESTIONS = 6;
 
+const DOMAIN_COLORS: Record<string, string[]> = {
+  teal: ["#22d3ee", "#06b6d4"],
+  purple: ["#c084fc", "#a855f7"],
+  emerald: ["#34d399", "#10b981"],
+  amber: ["#fbbf24", "#f59e0b"],
+  rose: ["#fb7185", "#f43f5e"],
+  blue: ["#60a5fa", "#3b82f6"],
+};
+
 /* ═══════════════════════════════════════════
    FIXED BOTTOM-LEFT NARRATOR CHARACTER & SPEECH BUBBLE
-   (Original working narrator system)
    ═══════════════════════════════════════════ */
 function BottomLeftNarrator({
   lines,
@@ -200,97 +216,210 @@ function WelcomeStep({
 }
 
 /* ═══════════════════════════════════════════
-   RESULTS / PROFILE SUMMARY STEP
+   RECOMMENDATION CARD (used for top pick &
+   alternate matches)
+   ═══════════════════════════════════════════ */
+function RecommendationCard({
+  rec,
+  top,
+  onSelect,
+}: {
+  rec: CareerRecommendation;
+  top: boolean;
+  onSelect?: (rec: CareerRecommendation) => void;
+}) {
+  const [text, border] = DOMAIN_COLORS[rec.color] || DOMAIN_COLORS.teal;
+  return (
+    <button
+      onClick={() => onSelect?.(rec)}
+      className={`w-full text-left rounded-2xl p-6 md:p-7 border-2 bg-[#090b0f]/95 backdrop-blur-md space-y-3 shadow-2xl transition-all ${
+        top
+          ? "border-[#b49b64]/70 ring-1 ring-[#b49b64]/40 shadow-[0_0_35px_rgba(180,155,100,0.25)]"
+          : "border-[#b49b64]/25 hover:border-[#b49b64]/60 hover:scale-[1.01]"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="space-y-1">
+          <span
+            className="text-[10px] font-mono uppercase tracking-widest px-2.5 py-1 rounded-full border"
+            style={{ borderColor: `${border}66`, color: text, backgroundColor: `${border}1a` }}
+          >
+            {rec.categoryLabel}
+          </span>
+          <h3 className={`font-cinzel text-xl md:text-2xl font-extrabold ${top ? "text-[#e8dfc8]" : "text-[#e0d6c3]"}`}>
+            {rec.domainName}
+          </h3>
+        </div>
+        <div className="text-right space-y-1">
+          <span className="font-mono text-lg font-bold" style={{ color: text }}>
+            {rec.matchPercent}%
+          </span>
+          <p className="text-[10px] font-mono text-[#6b6358] uppercase tracking-widest">{top ? "Best Match" : "Strong Match"}</p>
+        </div>
+      </div>
+
+      {/* Match strength bar */}
+      <div className="h-1.5 w-full rounded-full bg-[#3d3830]/60 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${rec.matchPercent}%`, background: `linear-gradient(90deg, ${border}, ${text})` }}
+        />
+      </div>
+
+      {rec.evidence.length > 0 && (
+        <p className="text-xs text-[#9a9182] italic">
+          Matched on: {rec.evidence.join(" · ")}
+        </p>
+      )}
+
+      <div>
+        <p className="text-[10px] font-mono text-[#6b6358] uppercase tracking-widest mb-1.5">Your learning roadmap</p>
+        <ol className="space-y-1.5">
+          {rec.roadmap.slice(0, top ? 6 : 3).map((step, i) => (
+            <li key={i} className="flex items-start gap-2 text-xs md:text-sm text-[#c8c0b0] leading-relaxed">
+              <span className="font-mono text-[10px] mt-0.5 px-1.5 py-0.5 rounded bg-[#b49b64]/15 text-[#b49b64] font-bold">
+                {i + 1}
+              </span>
+              {step}
+            </li>
+          ))}
+        </ol>
+        {!top && (
+          <p className="text-[11px] text-[#b49b64] mt-2 font-cinzel font-bold flex items-center gap-1">
+            Choose this path instead →
+          </p>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-1.5 pt-1">
+        {rec.entryRoles.slice(0, top ? 3 : 2).map((role, i) => (
+          <span
+            key={i}
+            className="text-[10px] px-2 py-0.5 rounded-full border border-[#b49b64]/30 text-[#9a9182] font-mono"
+          >
+            {role}
+          </span>
+        ))}
+      </div>
+    </button>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   RESULTS STEP — ranked recommendations OR
+   outside-engineering suggestion (no roadmap)
    ═══════════════════════════════════════════ */
 function ResultsStep({
   profile,
+  onPickPrimary,
   onCreateAccount,
 }: {
   profile: OnboardingProfile;
+  onPickPrimary: (rec: CareerRecommendation) => void;
   onCreateAccount: () => void;
 }) {
-  const domainColors: Record<string, { text: string; border: string; bg: string; glow: string }> = {
-    teal: { text: "text-[#22d3ee]", border: "border-[#06b6d4]", bg: "bg-[#06b6d4]/10", glow: "glow-teal" },
-    purple: { text: "text-[#c084fc]", border: "border-[#a855f7]", bg: "bg-[#a855f7]/10", glow: "glow-purple" },
-    emerald: { text: "text-[#34d399]", border: "border-[#10b981]", bg: "bg-[#10b981]/10", glow: "glow-emerald" },
-    amber: { text: "text-[#fbbf24]", border: "border-[#f59e0b]", bg: "bg-[#f59e0b]/10", glow: "glow-amber" },
-    rose: { text: "text-[#fb7185]", border: "border-[#f43f5e]", bg: "bg-[#f43f5e]/10", glow: "glow-rose" },
-    blue: { text: "text-[#60a5fa]", border: "border-[#3b82f6]", bg: "bg-[#3b82f6]/10", glow: "glow-teal" },
-  };
-  const color = domainColors[profile.domainColor] || domainColors.teal;
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  /* ── OUTSIDE ENGINEERING: suggestion only, no roadmap ── */
+  if (profile.status === "outside-engineering") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="max-w-3xl mx-auto space-y-6 relative z-20"
+      >
+        <div className="rounded-2xl p-8 md:p-10 border-2 border-[#b49b64]/50 bg-[#090b0f]/95 backdrop-blur-md text-center space-y-4 shadow-2xl">
+          <span className="text-xs font-mono uppercase tracking-widest px-3 py-1 rounded-full border border-[#f43f5e]/50 bg-[#f43f5e]/10 text-[#fb7185]">
+            Honest Counsel
+          </span>
+          <h2 className="font-cinzel text-xl md:text-3xl font-extrabold text-[#e8dfc8]">
+            Your interest is outside the engineering & tech world
+          </h2>
+          {profile.freeTextInterest && (
+            <p className="text-sm text-[#9a9182] italic">
+              &quot;{profile.freeTextInterest}&quot;
+            </p>
+          )}
+          <p className="text-sm md:text-base text-[#9a9182] leading-relaxed max-w-xl mx-auto font-sans text-left">
+            {profile.outOfEngineeringSuggestion}
+          </p>
+          <p className="text-xs text-[#6b6358] font-sans text-left leading-relaxed border-t border-[#b49b64]/20 pt-4">
+            Because CareerVerse helps students <b className="text-[#b49b64]">learn skills and get hired</b> where their
+            abilities match a company&apos;s needs, we don&apos;t invent a fake roadmap for fields we can&apos;t train
+            or place you in. If you change direction, come back and the Sensei will build your path.
+          </p>
+        </div>
+
+        <div className="text-center space-y-4 pt-2">
+          <button
+            onClick={onCreateAccount}
+            className="btn-scroll px-12 py-4 rounded-xl text-base font-bold uppercase tracking-widest shadow-[0_0_30px_rgba(180,155,100,0.4)]"
+          >
+            Still Explore The Platform →
+          </button>
+          <p className="text-xs text-[#6b6358] italic">
+            You can retake the assessment anytime — your answers stay yours.
+          </p>
+        </div>
+      </motion.div>
+    );
+  }
+
+  const top = profile.recommendations[0];
+  const alternates = profile.recommendations.slice(1, 4);
+  if (!top) return null;
+
+  const [text, border] = DOMAIN_COLORS[profile.domainColor] || DOMAIN_COLORS.teal;
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.6 }}
-      className="max-w-3xl mx-auto space-y-8 relative z-20"
+      className="max-w-3xl mx-auto space-y-6 relative z-20"
     >
-      {/* Main result card */}
-      <div className={`rounded-2xl p-8 md:p-10 border-2 ${color.border}/50 ${color.bg} ${color.glow} bg-[#090b0f]/95 backdrop-blur-md text-center space-y-4 shadow-2xl`}>
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <span className={`text-xs font-mono uppercase tracking-widest px-3 py-1 rounded-full border ${color.border}/50 ${color.bg} ${color.text}`}>
-            AI Recommendation Result
-          </span>
-        </div>
-        <h2 className="font-cinzel text-2xl md:text-4xl font-extrabold text-[#e8dfc8]">
-          Recommended Path: <span className={color.text}>{profile.recommendedDomain}</span>
+      <div className="text-center space-y-2">
+        <span className="text-xs font-mono uppercase tracking-widest px-3 py-1 rounded-full border border-[#b49b64]/50 bg-[#b49b64]/10 text-[#b49b64]">
+          Analyzed From Your {Object.keys(profile.answers).length} Responses
+        </span>
+        <h2 className="font-cinzel text-xl md:text-2xl font-extrabold text-[#e8dfc8]">
+          Paths ranked for you — {top.domainName} first, {alternates.length > 0 ? "but every match is yours to choose" : "choose freely"}
         </h2>
-        <p className="text-sm md:text-base text-[#9a9182] leading-relaxed max-w-xl mx-auto font-sans">
-          {profile.learningPathSummary}
-        </p>
-        <div className={`inline-block px-4 py-1.5 rounded-full border ${color.border}/40 ${color.bg}`}>
-          <span className={`font-mono text-xs ${color.text}`}>
-            Starting Level: {profile.difficultyLevel}
-          </span>
-        </div>
       </div>
 
-      {/* Details grid */}
+      {/* Top recommendation */}
+      <RecommendationCard rec={top} top />
+
+      {/* Summary grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Interests */}
-        <div className="surface-teal rounded-xl p-5 space-y-3 bg-[#090b0f]/90 backdrop-blur-md">
-          <h3 className="text-xs font-cinzel font-bold text-[#22d3ee] uppercase tracking-widest">
-            Your Interests
-          </h3>
+        <div className="rounded-xl p-5 space-y-3 bg-[#090b0f]/90 backdrop-blur-md border border-[#06b6d4]/25">
+          <h3 className="text-xs font-cinzel font-bold text-[#22d3ee] uppercase tracking-widest">Deep Subdomains</h3>
           <div className="flex flex-wrap gap-1.5">
-            {profile.interests.map((interest, i) => (
-              <span
-                key={i}
-                className="text-xs px-2.5 py-1 rounded-full bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#22d3ee]"
-              >
-                {interest}
+            {top.subdomains.map((s, i) => (
+              <span key={i} className="text-xs px-2.5 py-1 rounded-full bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#22d3ee]">
+                {s}
               </span>
             ))}
           </div>
         </div>
-
-        {/* Strengths */}
-        <div className="surface-purple rounded-xl p-5 space-y-3 bg-[#090b0f]/90 backdrop-blur-md">
-          <h3 className="text-xs font-cinzel font-bold text-[#c084fc] uppercase tracking-widest">
-            Your Strengths
-          </h3>
+        <div className="rounded-xl p-5 space-y-3 bg-[#090b0f]/90 backdrop-blur-md border border-[#a855f7]/25">
+          <h3 className="text-xs font-cinzel font-bold text-[#c084fc] uppercase tracking-widest">Specializations</h3>
           <div className="flex flex-wrap gap-1.5">
-            {profile.strengths.map((strength, i) => (
-              <span
-                key={i}
-                className="text-xs px-2.5 py-1 rounded-full bg-[#a855f7]/10 border border-[#a855f7]/30 text-[#c084fc]"
-              >
-                {strength}
+            {top.specializations.slice(0, 4).map((s, i) => (
+              <span key={i} className="text-xs px-2.5 py-1 rounded-full bg-[#a855f7]/10 border border-[#a855f7]/30 text-[#c084fc]">
+                {s}
               </span>
             ))}
           </div>
         </div>
-
-        {/* Suggested Topics */}
-        <div className="surface-emerald rounded-xl p-5 space-y-3 bg-[#090b0f]/90 backdrop-blur-md">
-          <h3 className="text-xs font-cinzel font-bold text-[#34d399] uppercase tracking-widest">
-            First Learning Topics
-          </h3>
+        <div className="rounded-xl p-5 space-y-3 bg-[#090b0f]/90 backdrop-blur-md border border-[#10b981]/25">
+          <h3 className="text-xs font-cinzel font-bold text-[#34d399] uppercase tracking-widest">First Learning Topics</h3>
           <ul className="space-y-1.5">
-            {profile.suggestedTopics.slice(0, 4).map((topic, i) => (
+            {profile.suggestedTopics.slice(0, 5).map((topic, i) => (
               <li key={i} className="text-xs text-[#9a9182] flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] flex-shrink-0" />
                 {topic}
               </li>
             ))}
@@ -298,18 +427,109 @@ function ResultsStep({
         </div>
       </div>
 
+      {/* Alternate matches — click to switch */}
+      {alternates.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-center text-xs font-mono text-[#6b6358] uppercase tracking-widest">
+            Other strong matches — click one to make it your path instead
+          </p>
+          {alternates.map((rec) => (
+            <RecommendationCard key={rec.domainId} rec={rec} top={false} onSelect={onPickPrimary} />
+          ))}
+        </div>
+      )}
+
+      {/* Entry info strip */}
+      <div
+        className="rounded-xl p-4 border border-[#b49b64]/30 bg-[#090b0f]/90 backdrop-blur-md text-center"
+        style={{ backgroundColor: `${border}10` }}
+      >
+        <p className="font-cinzel text-xs font-bold uppercase tracking-widest" style={{ color: text }}>
+          Starting Level: {profile.difficultyLevel} · Entry Accessibility: {top.entryAccessibility === "high" ? "Fresh friendly" : top.entryAccessibility === "moderate" ? "Needs consistent effort" : "Experience first"}
+        </p>
+      </div>
+
       {/* CTA */}
-      <div className="text-center space-y-4 pt-4">
+      <div className="text-center space-y-4 pt-2">
         <button
           onClick={onCreateAccount}
           className="btn-scroll px-12 py-4 rounded-xl text-base font-bold uppercase tracking-widest shadow-[0_0_30px_rgba(180,155,100,0.4)]"
         >
-          Create Account & Enter Platform →
+          Continue With {top.domainName} →
         </button>
         <p className="text-xs text-[#6b6358] italic">
-          Your personalized learning path will be waiting for you upon login.
+          Your ranked learning paths will be waiting for you upon login.
         </p>
       </div>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   ADDITIONAL INFO STEP (free-text follow-up)
+   Shown when answers don't match any domain —
+   the Sensei asks how & what work you like,
+   then the engine generates the road from it.
+   ═══════════════════════════════════════════ */
+function AdditionalInfoStep({
+  onAnalyze,
+  isAnalyzing,
+}: {
+  onAnalyze: (text: string) => void;
+  isAnalyzing: boolean;
+}) {
+  const [text, setText] = useState("");
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="scroll-surface rounded-2xl p-8 md:p-12 max-w-2xl mx-auto space-y-6 shadow-2xl border-2 border-[#b49b64]/40 bg-[#090b0f]/95 backdrop-blur-md"
+    >
+      <div className="space-y-3 text-center">
+        <span className="font-cinzel text-xs text-[#b49b64] uppercase tracking-widest font-bold">
+          Free Exploration
+        </span>
+        <h2 className="font-cinzel text-xl md:text-3xl font-extrabold text-[#e8dfc8] leading-snug">
+          Your answers don&apos;t fit a standard box — that&apos;s interesting
+        </h2>
+        <p className="text-sm text-[#9a9182] leading-relaxed">
+          Tell me in your own words: <b className="text-[#e8dfc8]">what kind of work interests you,
+          and how would you like to spend your days?</b>{" "}
+          Anything counts — tools, fields, industries, a problem you dream of solving. From this,
+          I&apos;ll map your road in the CareerVerse taxonomy.
+        </p>
+      </div>
+
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={4}
+        maxLength={600}
+        placeholder="e.g. I love designing Fortnite skins… / I want to work with Salesforce stuff my uncle uses… / I enjoy organizing people and events…"
+        className="w-full bg-[#040507] border-2 border-[#b49b64]/50 rounded-xl px-5 py-4 font-sans text-base text-[#e8dfc8] placeholder:text-[#3d3830] focus:outline-none focus:border-[#b49b64] shadow-inner resize-none"
+        autoFocus
+      />
+
+      <div className="flex items-center justify-between gap-4">
+        <span className="font-mono text-[10px] text-[#6b6358]">{text.length}/600</span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => onAnalyze(text.trim())}
+            disabled={text.trim().length < 8 || isAnalyzing}
+            className={`btn-scroll px-10 py-3.5 rounded-xl text-xs md:text-sm font-bold uppercase tracking-widest transition-all ${
+              text.trim().length < 8 || isAnalyzing
+                ? "opacity-30 cursor-not-allowed"
+                : "shadow-[0_0_25px_rgba(180,155,100,0.4)]"
+            }`}
+          >
+            {isAnalyzing ? "Mapping Your Road…" : "Find My Real Path →"}
+          </button>
+        </div>
+      </div>
+      {text.trim().length > 0 && text.trim().length < 8 && (
+        <p className="text-[11px] text-[#f43f5e] text-right">A little more detail please (min 8 characters)</p>
+      )}
     </motion.div>
   );
 }
@@ -319,8 +539,26 @@ function ResultsStep({
    ═══════════════════════════════════════════ */
 export default function OnboardingPage() {
   const router = useRouter();
+  const { updateProfile } = useGame();
 
-  const [phase, setPhase] = useState<"welcome" | "assessment" | "analyzing" | "results">("welcome");
+  /* Push the chosen paths/roles into the live game state so the World Map,
+     Dashboard and Dojo immediately follow the selected path — no re-login needed. */
+  function syncToPlayer(p: OnboardingProfile) {
+    if (p.status !== "matched") return;
+    updateProfile({
+      onboardingComplete: true,
+      recommendedDomain: p.recommendedDomain,
+      domainColor: p.domainColor,
+      difficultyLevel: p.difficultyLevel,
+      learningPathSummary: p.learningPathSummary,
+      interests: p.interests,
+      strengths: p.strengths,
+      suggestedTopics: p.suggestedTopics,
+      realmName: p.recommendedDomain,
+    });
+  }
+
+  const [phase, setPhase] = useState<"welcome" | "assessment" | "analyzing" | "details" | "results">("welcome");
   const [name, setName] = useState("");
   const [step, setStep] = useState(0);
   const [dialogueDone, setDialogueDone] = useState(false);
@@ -328,7 +566,10 @@ export default function OnboardingPage() {
   const [answers, setAnswers] = useState<{ questionId: string; questionText: string; selectedIds: string[]; selectedLabels: string[] }[]>([]);
   const [currentSelection, setCurrentSelection] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [profile, setProfile] = useState<OnboardingProfile | null>(null);
+  /** guards double-advance on rapid clicks */
+  const advancingRef = useRef(false);
 
   const resetDialogue = useCallback(() => setDialogueDone(false), []);
 
@@ -375,15 +616,22 @@ export default function OnboardingPage() {
 
   const currentQuestion = questions[step] || null;
 
-  /* Handle option selection */
+  /* Handle option selection — single select auto-advances */
   function selectOption(optionId: string) {
-    if (!currentQuestion) return;
+    if (!currentQuestion || advancingRef.current) return;
+
     if (currentQuestion.multiSelect) {
       setCurrentSelection((prev) =>
         prev.includes(optionId) ? prev.filter((x) => x !== optionId) : [...prev, optionId]
       );
     } else {
       setCurrentSelection([optionId]);
+      const chosen = optionId;
+      advancingRef.current = true;
+      window.setTimeout(() => {
+        advancingRef.current = false;
+        runAdvance([chosen]);
+      }, 280);
     }
   }
 
@@ -391,11 +639,22 @@ export default function OnboardingPage() {
     return currentSelection.includes(optionId);
   }
 
-  /* Advance to next AI question */
-  async function handleNextQuestion() {
+  /* Next-question button (multiSelect path) */
+  function handleNextQuestion() {
     if (!currentQuestion || currentSelection.length === 0) return;
+    runAdvance(currentSelection);
+  }
 
-    const selectedLabels = currentSelection.map(
+  /**
+   * Full advance pipeline: record the answer for this step, move to the
+   * next question, or run the ranked analysis when the assessment is done.
+   * Safe for both click-auto-advance and the multiSelect Continue button
+   * because the selection is passed explicitly (no stale-state reads).
+   */
+  async function runAdvance(selection: string[]) {
+    if (!currentQuestion || selection.length === 0) return;
+
+    const selectedLabels = selection.map(
       (id) => currentQuestion.options.find((o) => o.id === id)?.label || id
     );
 
@@ -404,7 +663,7 @@ export default function OnboardingPage() {
       {
         questionId: currentQuestion.id,
         questionText: currentQuestion.question,
-        selectedIds: currentSelection,
+        selectedIds: selection,
         selectedLabels,
       },
     ];
@@ -413,19 +672,20 @@ export default function OnboardingPage() {
     setCurrentSelection([]);
 
     if (step + 1 >= TOTAL_QUESTIONS) {
-      // Assessment complete → analyze profile with AI
       setPhase("analyzing");
       const formattedForAnalysis = updatedAnswers.map((a) => ({
         question: a.questionText,
         answer: a.selectedLabels.join(", "),
       }));
-      const res = await analyzeUserProfile(name, formattedForAnalysis);
-      setProfile(res);
+      const res = await analyzeUserProfile(name || "Learner", formattedForAnalysis);
 
-      if (typeof window !== "undefined") {
-        localStorage.setItem("cv_onboarding_profile", JSON.stringify(res));
+      if (res.status === "needs-details") {
+        setPhase("details");
+        return;
       }
-
+      setProfile(res);
+      localStorage.setItem("cv_onboarding_profile", JSON.stringify(res));
+      syncToPlayer(res);
       setPhase("results");
     } else {
       const nextStep = step + 1;
@@ -449,6 +709,30 @@ export default function OnboardingPage() {
       setAnswers([]);
       setCurrentSelection([]);
     }
+  }
+
+  /* Free-text follow-up submission → re-analyze */
+  async function handleFreeTextAnalyze(text: string) {
+    const formatted = answers.map((a) => ({ question: a.questionText, answer: a.selectedLabels.join(", ") }));
+    setIsAnalyzing(true);
+    try {
+      const res = await analyzeFreeText(name || "Learner", formatted, text);
+      setProfile(res);
+      localStorage.setItem("cv_onboarding_profile", JSON.stringify(res));
+      syncToPlayer(res);
+      setPhase("results");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }
+
+  /* Alternate pick from results */
+  function handlePickPrimary(rec: CareerRecommendation) {
+    if (!profile) return;
+    const updated = profileFromRecommendation(profile, rec);
+    setProfile(updated);
+    localStorage.setItem("cv_onboarding_profile", JSON.stringify(updated));
+    syncToPlayer(updated);
   }
 
   return (
@@ -537,14 +821,16 @@ export default function OnboardingPage() {
                       <div className="text-center space-y-2">
                         <span className="font-cinzel text-xs text-[#b49b64] uppercase tracking-widest">
                           Question {step + 1} of {TOTAL_QUESTIONS}
-                          {currentQuestion.multiSelect && " • Select all that apply"}
+                          {currentQuestion.multiSelect
+                            ? " • Select all that apply, then Continue"
+                            : " • Click a card to answer"}
                         </span>
                         <p className="font-cinzel text-xl md:text-3xl lg:text-4xl font-extrabold text-[#e8dfc8] tracking-wide drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">
                           {currentQuestion.question}
                         </p>
                       </div>
 
-                      {/* Choice cards in scroll/parchment style */}
+                      {/* Choice cards — CLICK IS ENOUGH for single-select */}
                       <div
                         className={`grid gap-4 md:gap-6 ${
                           currentQuestion.options.length <= 4
@@ -582,7 +868,7 @@ export default function OnboardingPage() {
                         })}
                       </div>
 
-                      {/* Navigation buttons */}
+                      {/* Navigation buttons — only needed for multiSelect */}
                       <div className="flex items-center justify-between pt-6">
                         <button
                           onClick={(e) => {
@@ -593,20 +879,26 @@ export default function OnboardingPage() {
                         >
                           ← Return
                         </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleNextQuestion();
-                          }}
-                          disabled={currentSelection.length === 0}
-                          className={`btn-scroll px-10 py-3.5 rounded-lg text-xs md:text-sm font-bold uppercase tracking-widest transition-all ${
-                            currentSelection.length === 0
-                              ? "opacity-30 cursor-not-allowed"
-                              : "shadow-[0_0_25px_rgba(180,155,100,0.4)]"
-                          }`}
-                        >
-                          {step + 1 === TOTAL_QUESTIONS ? "Complete Assessment →" : "Continue →"}
-                        </button>
+                        {currentQuestion.multiSelect ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleNextQuestion();
+                            }}
+                            disabled={currentSelection.length === 0}
+                            className={`btn-scroll px-10 py-3.5 rounded-lg text-xs md:text-sm font-bold uppercase tracking-widest transition-all ${
+                              currentSelection.length === 0
+                                ? "opacity-30 cursor-not-allowed"
+                                : "shadow-[0_0_25px_rgba(180,155,100,0.4)]"
+                            }`}
+                          >
+                            {step + 1 === TOTAL_QUESTIONS ? "Complete Assessment →" : "Continue →"}
+                          </button>
+                        ) : (
+                          <span className="font-mono text-[10px] text-[#6b6358] uppercase tracking-widest px-6">
+                            Clicking answers automatically
+                          </span>
+                        )}
                       </div>
                     </motion.div>
                   )}
@@ -616,7 +908,7 @@ export default function OnboardingPage() {
           )}
 
           {/* Analyzing Step */}
-          {phase === "analyzing" && (
+          {(phase === "analyzing" || isAnalyzing) && (
             <motion.div
               key="analyzing"
               initial={{ opacity: 0 }}
@@ -627,20 +919,26 @@ export default function OnboardingPage() {
               <div className="w-12 h-12 border-2 border-[#b49b64] border-t-transparent rounded-full animate-spin mx-auto" />
               <div className="space-y-2">
                 <h3 className="font-cinzel text-lg font-bold text-[#b49b64]">
-                  Analyzing Your Assessment
+                  Analyzing Against The Career Taxonomy
                 </h3>
                 <p className="text-xs text-[#9a9182] leading-relaxed">
-                  AI Sensei is processing your responses to recommend the optimal IT career path...
+                  Ranking every career domain against your responses — no assumptions, no default path.
                 </p>
               </div>
             </motion.div>
           )}
 
-          {/* Step Results: AI Profile Recommendation */}
+          {/* Free-text follow-up when nothing matched */}
+          {phase === "details" && (
+            <AdditionalInfoStep onAnalyze={handleFreeTextAnalyze} isAnalyzing={isAnalyzing} />
+          )}
+
+          {/* Step Results: ranked recommendations or honest suggestion */}
           {phase === "results" && profile && (
             <ResultsStep
               key="results"
               profile={profile}
+              onPickPrimary={handlePickPrimary}
               onCreateAccount={() => router.push("/auth")}
             />
           )}

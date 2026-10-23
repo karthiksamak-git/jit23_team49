@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useGame } from "@/lib/game-context";
 import { chatWithGroq } from "@/lib/ai-client";
+import { matchRealmId } from "@/lib/realm-match";
 
 /* Tiny blur-up placeholder: instant terrain paint while the webp loads (2.3MB png → 105KB webp) */
 const TERRAIN_BLUR = "data:image/jpeg;base64,/9j/2wBDABQODxIPDRQSEBIXFRQYHjIhHhwcHj0sLiQySUBMS0dARkVQWnNiUFVtVkVGZIhlbXd7gYKBTmCNl4x9lnN+gXz/2wBDARUXFx4aHjshITt8U0ZTfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHz/wAARCAASABgDASIAAhEBAxEB/8QAFwABAQEBAAAAAAAAAAAAAAAAAAMCBv/EAB0QAAICAgMBAAAAAAAAAAAAAAABAhEDMSEiQRL/xAAWAQEBAQAAAAAAAAAAAAAAAAAAAQL/xAAVEQEBAAAAAAAAAAAAAAAAAAAAEf/aAAwDAQACEQMRAD8A5qGNTl2aSKyxfEaVNEHkuqS4Kqakl4VmJdW9Uwam41xQCxCPppaAAy9gAD//2Q==";
@@ -133,6 +134,45 @@ const initialDomainRealms: DomainRealm[] = [
       { id: "ds5", title: "Analytics Capstone", subtitle: "Final Boss", lore: "Analyze a complex real-world dataset and present actionable recommendations.", status: "locked", type: "boss", xp: 500, iconKey: "boss", x: 50, y: 20, connections: [] },
     ],
   },
+  {
+    id: "cyber",
+    name: "Operation: Cybersecurity",
+    subtitle: "Master threat detection, cryptography, ethical hacking & defence",
+    narrativeIntro: "Think like an attacker to defend like a pro — hunt threats, crack hashes (legally) and lock down systems.",
+    missions: [
+      { id: "cy1", title: "Networking & Linux Basics", subtitle: "Level 1", lore: "Understand packets, ports, protocols and the command line every defender lives in.", status: "active", type: "lesson", xp: 100, iconKey: "shrine", x: 50, y: 88, connections: ["cy2"] },
+      { id: "cy2", title: "Cryptography & Encryption", subtitle: "Level 2", lore: "Learn hashing, symmetric vs asymmetric encryption and how certificates work.", status: "locked", type: "lesson", xp: 160, iconKey: "scroll", x: 35, y: 72, connections: ["cy3"] },
+      { id: "cy3", title: "Threats & Social Engineering", subtitle: "Level 3", lore: "Recognise malware, phishing and the human-side attacks that bypass every firewall.", status: "locked", type: "challenge", xp: 220, iconKey: "index", x: 24, y: 54, connections: ["cy4"] },
+      { id: "cy4", title: "Defensive Security & Hardening", subtitle: "Level 4", lore: "Configure firewalls, harden systems and monitor incidents with SIEM tooling.", status: "locked", type: "lesson", xp: 280, iconKey: "gateway", x: 45, y: 38, connections: ["cy5"] },
+      { id: "cy5", title: "Security Operations Capstone", subtitle: "Final Boss", lore: "Detect, contain and report on a live simulated attack end to end.", status: "locked", type: "boss", xp: 500, iconKey: "boss", x: 50, y: 20, connections: [] },
+    ],
+  },
+  {
+    id: "mobile",
+    name: "Operation: Mobile App Development",
+    subtitle: "Master Android, iOS and cross-platform app engineering",
+    narrativeIntro: "Build apps that live in users' pockets — smooth screens, local storage and store-ready releases.",
+    missions: [
+      { id: "mb1", title: "Language & UI Foundations", subtitle: "Level 1", lore: "Learn the mobile language basics (Dart/Kotlin/Swift) and build your first screens.", status: "active", type: "lesson", xp: 100, iconKey: "shrine", x: 50, y: 88, connections: ["mb2"] },
+      { id: "mb2", title: "State Management & Navigation", subtitle: "Level 2", lore: "Keep screens in sync and move users through stacks, tabs and drawers cleanly.", status: "locked", type: "challenge", xp: 160, iconKey: "scroll", x: 35, y: 72, connections: ["mb3"] },
+      { id: "mb3", title: "APIs & Offline Storage", subtitle: "Level 3", lore: "Fetch backend data and persist it locally so the app works without a network.", status: "locked", type: "challenge", xp: 220, iconKey: "query", x: 24, y: 54, connections: ["mb4"] },
+      { id: "mb4", title: "Native Features & App Architecture", subtitle: "Level 4", lore: "Integrate camera, notifications and permissions with a scalable project structure.", status: "locked", type: "lesson", xp: 280, iconKey: "gateway", x: 45, y: 38, connections: ["mb5"] },
+      { id: "mb5", title: "Store-Ready Capstone", subtitle: "Final Boss", lore: "Build, sign and ship a production-quality app to the Play Store / App Store.", status: "locked", type: "boss", xp: 500, iconKey: "boss", x: 50, y: 20, connections: [] },
+    ],
+  },
+  {
+    id: "pm",
+    name: "Operation: Project & Program Management",
+    subtitle: "Master scope, scheduling, agile delivery, and stakeholder communication",
+    narrativeIntro: "Plan and ship real work: define scope, run agile ceremonies, track risk, and keep stakeholders aligned.",
+    missions: [
+      { id: "pm1", title: "PM Basics: Scope, Schedule & Cost", subtitle: "Level 1", lore: "Learn the triple constraint and how to define scope, estimate schedule, and budget effort on a project.", status: "active", type: "lesson", xp: 100, iconKey: "shrine", x: 50, y: 88, connections: ["pm2"] },
+      { id: "pm2", title: "Agile & Scrum Ceremonies (Jira)", subtitle: "Level 2", lore: "Run sprints, standups, reviews and retros — and manage the backlog in Jira like a real team.", status: "locked", type: "challenge", xp: 160, iconKey: "scroll", x: 35, y: 72, connections: ["pm3"] },
+      { id: "pm3", title: "Requirements & Stakeholder Communication", subtitle: "Level 3", lore: "Elicit requirements, write user stories, and keep stakeholders aligned with clear status communication.", status: "locked", type: "challenge", xp: 220, iconKey: "query", x: 24, y: 54, connections: ["pm4"] },
+      { id: "pm4", title: "Risk & Progress Tracking", subtitle: "Level 4", lore: "Maintain a risk register, track velocity and burndown, and report progress before it slips.", status: "locked", type: "lesson", xp: 280, iconKey: "index", x: 45, y: 38, connections: ["pm5"] },
+      { id: "pm5", title: "Capstone: Plan & Ship a Release", subtitle: "Final Boss", lore: "Plan and deliver an actual release end to end: charter, backlog, sprint execution, and stakeholder sign-off.", status: "locked", type: "boss", xp: 500, iconKey: "boss", x: 50, y: 20, connections: [] },
+    ],
+  },
 ];
 
 function statusColor(status: string) {
@@ -152,29 +192,50 @@ function typeLabel(type: string) {
 }
 
 export default function DynamicWorldMapPage() {
-  const { player, completeMission, addCoins } = useGame();
+  const { player, completeMission, addCoins, sfx } = useGame();
   const [mounted, setMounted] = useState(false);
   const [realms, setRealms] = useState<DomainRealm[]>(initialDomainRealms);
   const [activeDomainId, setActiveDomainId] = useState("backend");
+  /** recommendation with no built-in realm — shown as an honest banner, not silently mapped */
+  const [noMatchDomain, setNoMatchDomain] = useState<string | null>(null);
   const [selected, setSelected] = useState<MissionNode | null>(null);
   const [filterQuery, setFilterQuery] = useState("");
   const [showAiModal, setShowAiModal] = useState(false);
   const [customGoal, setCustomGoal] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Sync active realm with user's AI recommended domain from onboarding
+  // Deep-link: /world-map?forge=1 opens the AI forge pre-filled with the
+  // user's recommendation (used by the dashboard when no realm matches).
+  // window.location avoids useSearchParams, which would force this page
+  // out of static prerendering.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("forge")) {
+      const rec = player.recommendedDomain || player.realmName || "";
+      setCustomGoal(rec);
+      setShowAiModal(true);
+      // strip the query so a refresh doesn't reopen the modal
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sync active realm with user's AI recommended domain from onboarding.
+  // If no realm matches the recommendation, keep the current realm and flag
+  // it — we never silently claim the user's path is Backend.
   useEffect(() => {
     setMounted(true);
-    if (player.recommendedDomain || player.realmName) {
-      const rec = (player.recommendedDomain || player.realmName).toLowerCase();
-      if (rec.includes("frontend")) setActiveDomainId("frontend");
-      else if (rec.includes("full")) setActiveDomainId("fullstack");
-      else if (rec.includes("devops") || rec.includes("cloud")) setActiveDomainId("devops");
-      else if (rec.includes("ai") || rec.includes("machine")) setActiveDomainId("ai");
-      else if (rec.includes("data")) setActiveDomainId("data");
-      else setActiveDomainId("backend");
+    const rec = player.recommendedDomain || player.realmName || "";
+    if (!rec.trim()) return;
+    const match = matchRealmId(rec, realms);
+    if (match) {
+      setActiveDomainId(match);
+      setNoMatchDomain(null);
+    } else {
+      setNoMatchDomain(rec);
     }
-  }, [player.recommendedDomain, player.realmName]);
+  }, [player.recommendedDomain, player.realmName, realms]);
 
   const activeRealm = realms.find((r) => r.id === activeDomainId) || realms[0];
 
@@ -311,6 +372,25 @@ Return ONLY a valid JSON object:
         </div>
 
         <div className="ink-divider-teal" />
+
+        {/* Honest fallback: recommendation has no built-in realm yet */}
+        {noMatchDomain && (
+          <div className="rounded-xl px-4 py-4 space-y-2 border border-[#f59e0b]/30 bg-[#f59e0b]/[0.06]">
+            <p className="text-[10px] font-mono text-[#fbbf24] uppercase tracking-widest">
+              ⚠ No learning path yet
+            </p>
+            <p className="text-xs text-[#9a9182] leading-relaxed">
+              We don&apos;t have a built-in realm for <strong className="text-[#e8dfc8]">{noMatchDomain}</strong>.
+              Forge a custom AI roadmap for it below — or pick any realm from the list.
+            </p>
+            <button
+              onClick={() => { setCustomGoal(noMatchDomain); setShowAiModal(true); sfx("click"); }}
+              className="btn-teal w-full py-2 rounded-lg text-[11px] font-semibold uppercase tracking-wider"
+            >
+              ✨ Forge {noMatchDomain} Roadmap
+            </button>
+          </div>
+        )}
 
         <div className="space-y-2">
           <span className="text-[10px] font-mono text-[#06b6d4] uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-[#06b6d4]/30 bg-[#06b6d4]/10">
