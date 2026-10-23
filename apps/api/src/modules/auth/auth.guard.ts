@@ -24,29 +24,22 @@ export class AuthGuard implements CanActivate {
     if (isPublic) return true;
 
     const request = context.switchToHttp().getRequest();
-    const userId = request.headers["x-user-id"] as string;
     const sessionToken = request.headers["x-session-token"] as string;
 
-    if (!userId) {
+    if (!sessionToken) {
       throw new UnauthorizedException("Authentication required");
     }
 
-    if (sessionToken) {
-      const session = await this.prisma.session.findFirst({
-        where: { token: sessionToken, userId, expiresAt: { gt: new Date() } },
-        include: { user: true },
-      });
+    const session = await this.prisma.session.findFirst({
+      where: { token: sessionToken, expiresAt: { gt: new Date() } },
+      include: { user: true },
+    });
 
-      if (!session) {
-        throw new UnauthorizedException("Invalid or expired session");
-      }
-
-      request.user = session.user;
-    } else {
-      const user = await this.prisma.user.findUnique({ where: { id: userId } });
-      if (!user) throw new UnauthorizedException("User not found");
-      request.user = user;
+    if (!session) {
+      throw new UnauthorizedException("Invalid or expired session");
     }
+
+    request.user = session.user;
 
     const requiredRoles = this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [
       context.getHandler(),

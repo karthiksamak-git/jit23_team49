@@ -33,7 +33,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const routes = [
     { label: "Dashboard", href: "/dashboard", color: "text-[#22d3ee]" },
     { label: "Learning Path", href: "/world-map", color: "text-[#c084fc]" },
-    { label: "Practice Lab", href: "/worlds/backend", color: "text-[#fbbf24]" },
+    { label: "Practice Lab", href: "/sandbox", color: "text-[#fbbf24]" },
+    { label: "The Dojo", href: "/worlds/backend", color: "text-[#f59e0b]" },
     { label: "Mock Interview", href: "/interview", color: "text-[#fb7185]" },
     { label: "Jobs", href: "/opportunities", color: "text-[#34d399]" },
     { label: "My Progress", href: "/discover", color: "text-[#60a5fa]" },

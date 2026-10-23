@@ -12,6 +12,7 @@ export class GamificationController {
     return this.gamificationService.getUserStats(req.user.id);
   }
 
+  @UseGuards(AuthGuard)
   @Get("leaderboard")
   async getLeaderboard(@Query("limit") limit?: string) {
     const take = limit ? parseInt(limit, 10) : 50;
