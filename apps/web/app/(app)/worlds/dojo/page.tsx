@@ -478,7 +478,7 @@ function DojoContent() {
               <div className="flex items-center justify-center gap-6 text-xs font-mono text-[#6b6358]">
                 <span>{totalPlanned} Scenarios</span>
                 <span>·</span>
-                <span>⏱ 30s each</span>
+                <span className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" strokeWidth={2} /> 30s each</span>
                 <span>·</span>
                 <span>{MAX_HEARTS} Hearts</span>
               </div>
