@@ -74,8 +74,8 @@
   }
 
   ::selection {
-    background-color: rgba(6, 182, 212, 0.25);
-    color: var(--teal-bright);
+    background-color: rgba(180, 155, 100, 0.30);
+    color: #e8dfc8;
   }
 }
 
@@ -160,14 +160,14 @@
 /* Colorful ink dividers */
 .ink-divider-teal {
   height: 2px;
-  background: linear-gradient(90deg, transparent 0%, var(--teal-dim) 30%, var(--teal) 50%, var(--teal-dim) 70%, transparent 100%);
-  opacity: 0.4;
+  background: linear-gradient(90deg, transparent 0%, var(--accent-dim) 30%, var(--accent) 50%, var(--accent-dim) 70%, transparent 100%);
+  opacity: 0.5;
 }
 
 .ink-divider-purple {
   height: 2px;
-  background: linear-gradient(90deg, transparent 0%, var(--purple-dim) 30%, var(--purple) 50%, var(--purple-dim) 70%, transparent 100%);
-  opacity: 0.4;
+  background: linear-gradient(90deg, transparent 0%, var(--accent-dim) 30%, var(--accent) 50%, var(--accent-dim) 70%, transparent 100%);
+  opacity: 0.5;
 }
 
 /* ═════════════ VIGNETTE — Edge darkening only ═════════════ */
@@ -213,31 +213,31 @@
 
 /* Colorful progress fills */
 .xp-fill-teal {
-  background: linear-gradient(90deg, var(--teal-dim), var(--teal), var(--teal-bright));
+  background: linear-gradient(90deg, var(--teal-dim), var(--teal));
   height: 100%;
   transition: width 1s ease;
 }
 
 .xp-fill-purple {
-  background: linear-gradient(90deg, var(--purple-dim), var(--purple), var(--purple-bright));
+  background: linear-gradient(90deg, var(--purple-dim), var(--purple));
   height: 100%;
   transition: width 1s ease;
 }
 
 .xp-fill-emerald {
-  background: linear-gradient(90deg, var(--emerald-dim), var(--emerald), var(--emerald-bright));
+  background: linear-gradient(90deg, var(--emerald-dim), var(--emerald));
   height: 100%;
   transition: width 1s ease;
 }
 
 .xp-fill-amber {
-  background: linear-gradient(90deg, var(--amber-dim), var(--amber), var(--amber-bright));
+  background: linear-gradient(90deg, var(--amber-dim), var(--amber));
   height: 100%;
   transition: width 1s ease;
 }
 
 .xp-fill-rose {
-  background: linear-gradient(90deg, var(--rose-dim), var(--rose), var(--rose-bright));
+  background: linear-gradient(90deg, var(--rose-dim), var(--rose));
   height: 100%;
   transition: width 1s ease;
 }
@@ -428,13 +428,11 @@
   box-shadow: 0 0 20px rgba(244,63,94,0.15);
 }
 
-.btn-rose:active { transform: scale(0.98); }
-
-/* Primary CTA button with gradient */
+.btn-rose:active { transform: scale(0.98); }/* Primary CTA button — muted bronze accent (professional) */
 .btn-primary {
-  background: linear-gradient(135deg, var(--teal) 0%, var(--purple) 100%);
+  background: linear-gradient(135deg, #b49b64 0%, #9a814e 100%);
   border: none;
-  color: #fff;
+  color: #14110b;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -448,7 +446,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, var(--teal-bright) 0%, var(--purple-bright) 100%);
+  background: linear-gradient(135deg, #d4bf8a 0%, #b49b64 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -456,7 +454,7 @@
 .btn-primary:hover::before { opacity: 1; }
 
 .btn-primary:hover {
-  box-shadow: 0 0 30px rgba(6,182,212,0.25), 0 0 60px rgba(168,85,247,0.15);
+  box-shadow: 0 6px 24px rgba(180, 155, 100, 0.22);
   transform: translateY(-1px);
 }
 
@@ -556,7 +554,7 @@
 }
 
 .shimmer {
-  background: linear-gradient(90deg, transparent 25%, rgba(6,182,212,0.08) 50%, transparent 75%);
+  background: linear-gradient(90deg, transparent 25%, rgba(180,155,100,0.10) 50%, transparent 75%);
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useGame } from "@/lib/game-context";
+import { AlertTriangle, Zap } from "lucide-react";
 
 /* ═══════════════════════════════════════════
    AUTH PAGE — Create Account & Sign In
@@ -69,8 +70,8 @@ export default function AuthPage() {
       <div className="vignette" />
 
       {/* Background accents */}
-      <div className="absolute top-1/4 left-1/3 w-[400px] h-[400px] rounded-full bg-[#06b6d4] opacity-[0.03] blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/3 w-[400px] h-[400px] rounded-full bg-[#a855f7] opacity-[0.03] blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/4 left-1/3 w-[400px] h-[400px] rounded-full bg-[#b49b64] opacity-[0.04] blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/3 w-[400px] h-[400px] rounded-full bg-[#b49b64] opacity-[0.03] blur-[120px] pointer-events-none" />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -82,8 +83,8 @@ export default function AuthPage() {
         <div className="text-center space-y-2">
           <Link href="/" className="inline-block">
             <h1 className="font-cinzel text-3xl font-bold tracking-widest">
-              <span className="text-[#06b6d4]">CAREER</span>
-              <span className="text-[#a855f7]">VERSE</span>
+              <span className="text-[#e8dfc8]">CAREER</span>
+              <span className="text-[#b49b64]">VERSE</span>
             </h1>
           </Link>
           <p className="text-xs text-[#6b6358] tracking-wider">
@@ -97,7 +98,7 @@ export default function AuthPage() {
             onClick={() => { setMode("signup"); setError(null); }}
             className={`flex-1 py-2.5 text-xs font-semibold tracking-wider rounded-lg transition-all ${
               mode === "signup"
-                ? "bg-gradient-to-r from-[#06b6d4]/15 to-[#a855f7]/15 text-[#22d3ee] border border-[#06b6d4]/30"
+                ? "bg-[#b49b64]/10 text-[#e8dfc8] border border-[#b49b64]/40"
                 : "text-[#6b6358] hover:text-[#c8c0b0]"
             }`}
           >
@@ -107,7 +108,7 @@ export default function AuthPage() {
             onClick={() => { setMode("signin"); setError(null); }}
             className={`flex-1 py-2.5 text-xs font-semibold tracking-wider rounded-lg transition-all ${
               mode === "signin"
-                ? "bg-gradient-to-r from-[#06b6d4]/15 to-[#a855f7]/15 text-[#22d3ee] border border-[#06b6d4]/30"
+                ? "bg-[#b49b64]/10 text-[#e8dfc8] border border-[#b49b64]/40"
                 : "text-[#6b6358] hover:text-[#c8c0b0]"
             }`}
           >
@@ -128,7 +129,7 @@ export default function AuthPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Enter your full name..."
-                  className="w-full bg-[#060708] border border-[#2a2520] rounded-lg px-4 py-2.5 text-sm text-[#e8dfc8] placeholder:text-[#3d3830] focus:outline-none focus:border-[#06b6d4] transition-colors"
+                  className="w-full bg-[#060708] border border-[#2a2520] rounded-lg px-4 py-2.5 text-sm text-[#e8dfc8] placeholder:text-[#3d3830] focus:outline-none focus:border-[#b49b64] transition-colors"
                   required
                 />
               </div>
@@ -143,7 +144,7 @@ export default function AuthPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full bg-[#060708] border border-[#2a2520] rounded-lg px-4 py-2.5 font-mono text-sm text-[#e8dfc8] placeholder:text-[#3d3830] focus:outline-none focus:border-[#06b6d4] transition-colors"
+                className="w-full bg-[#060708] border border-[#2a2520] rounded-lg px-4 py-2.5 font-mono text-sm text-[#e8dfc8] placeholder:text-[#3d3830] focus:outline-none focus:border-[#b49b64] transition-colors"
                 required
               />
             </div>
@@ -157,14 +158,14 @@ export default function AuthPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-[#060708] border border-[#2a2520] rounded-lg px-4 py-2.5 font-mono text-sm text-[#e8dfc8] placeholder:text-[#3d3830] focus:outline-none focus:border-[#06b6d4] transition-colors"
+                className="w-full bg-[#060708] border border-[#2a2520] rounded-lg px-4 py-2.5 font-mono text-sm text-[#e8dfc8] placeholder:text-[#3d3830] focus:outline-none focus:border-[#b49b64] transition-colors"
                 required
               />
             </div>
 
             {error && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#f43f5e]/10 border border-[#f43f5e]/20">
-                <span className="text-[#fb7185] text-xs">⚠</span>
+                <AlertTriangle className="w-3.5 h-3.5 text-[#fb7185]" strokeWidth={2} />
                 <p className="text-xs text-[#fb7185]">{error}</p>
               </div>
             )}
@@ -191,9 +192,9 @@ export default function AuthPage() {
                 demoSignIn(name || undefined);
                 router.push("/dashboard");
               }}
-              className="text-[10px] text-[#6b6358] hover:text-[#06b6d4] transition-colors"
+              className="text-[10px] text-[#6b6358] hover:text-[#b49b64] transition-colors"
             >
-              ⚡ Quick Demo Access (skip signup)
+              <Zap className="inline w-3 h-3" strokeWidth={2} /> Quick Demo Access (skip signup)
             </button>
           </div>
         </div>
@@ -201,7 +202,7 @@ export default function AuthPage() {
         {/* Back to onboarding link */}
         <p className="text-center text-[10px] text-[#3d3830]">
           Haven&apos;t taken the assessment yet?{" "}
-          <Link href="/onboarding" className="text-[#06b6d4] hover:underline">
+          <Link href="/onboarding" className="text-[#b49b64] hover:underline">
             Start here
           </Link>
         </p>

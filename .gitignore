@@ -50,3 +50,6 @@ coverage
 
 # TypeScript build info
 *.tsbuildinfo
+
+# Ship demo API keys so a GitHub zip download runs without setup
+!apps/web/.env

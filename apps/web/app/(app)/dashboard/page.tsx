@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 import { generateDailyRecommendations, LearningRecommendation } from "@/lib/ai-learning-engine";
 import { matchRealmId, BUILT_IN_REALMS } from "@/lib/realm-match";
+import { gsap, useGSAP, prefersReducedMotion } from "@/lib/gsap";
+import { Clock, Flame, Hexagon, Sparkles } from "lucide-react";
 
 /* ═══════════════════════════════════════════
    PERSONALIZED DASHBOARD
@@ -32,6 +34,43 @@ export default function DashboardPage() {
   const { player, signOut, sfx } = useGame();
   const [recommendations, setRecommendations] = useState<LearningRecommendation[]>([]);
   const [loadingRecs, setLoadingRecs] = useState(true);
+
+  /** GSAP count-up targets for the stat numbers */
+  const xpRef = useRef<HTMLSpanElement>(null);
+  const streakRef = useRef<HTMLSpanElement>(null);
+  const coinsRef = useRef<HTMLSpanElement>(null);
+  const skillsRef = useRef<HTMLSpanElement>(null);
+
+  /* Count-up: tween a proxy object and write rounded values into the DOM.
+     Values start at the real number in SSR markup, so reduced-motion users
+     and no-JS renders still see the correct figure. */
+  useGSAP(
+    () => {
+      if (prefersReducedMotion()) return;
+      const targets: [React.RefObject<HTMLSpanElement | null>, number][] = [
+        [xpRef, player.xp],
+        [streakRef, player.streak],
+        [coinsRef, player.coins],
+        [skillsRef, player.completedMissions.length],
+      ];
+      targets.forEach(([ref, end], i) => {
+        const el = ref.current;
+        if (!el) return;
+        const obj = { v: 0 };
+        gsap.to(obj, {
+          v: end,
+          duration: 1.1,
+          delay: 0.15 + i * 0.08,
+          ease: "power2.out",
+          onUpdate: () => {
+            const n = Math.round(obj.v);
+            el.textContent = i === 2 ? n.toLocaleString() : String(n);
+          },
+        });
+      });
+    },
+    { dependencies: [player.xp, player.streak, player.coins, player.completedMissions.length] }
+  );
 
   const dColor = domainColorMap[player.domainColor] || domainColorMap.teal;
 
@@ -66,10 +105,9 @@ export default function DashboardPage() {
 
   const quickLinks = [
     { href: "/world-map", title: "Learning Path", description: "Follow your personalized roadmap", color: "surface-teal" },
-    { href: "/worlds/backend", title: "Practice Lab", description: "Hands-on coding challenges", color: "surface-purple" },
+    { href: "/sandbox", title: "Practice Lab", description: "Write & run code in any language", color: "surface-purple" },
     { href: "/interview", title: "Mock Interview", description: "AI-powered interview practice", color: "surface-amber" },
     { href: "/opportunities", title: "Jobs & Internships", description: "Find roles matching your skills", color: "surface-emerald" },
-    { href: "/sandbox", title: "Coding Sandbox", description: "Write and test code freely", color: "surface-rose" },
     { href: "/discover", title: "My Progress", description: "Track your learning journey", color: "surface-blue" },
   ];
 
@@ -119,7 +157,7 @@ export default function DashboardPage() {
             Experience
           </span>
           <p className="font-mono text-xl md:text-2xl font-bold text-[#22d3ee]">
-            {player.xp} <span className="text-xs text-[#6b6358]">XP</span>
+            <span ref={xpRef}>{player.xp}</span> <span className="text-xs text-[#6b6358]">XP</span>
           </p>
           <div className="xp-track h-1.5 rounded-full">
             <div className="xp-fill-teal rounded-full" style={{ width: `${xpPercent}%` }} />
@@ -132,7 +170,8 @@ export default function DashboardPage() {
             Learning Streak
           </span>
           <p className="font-mono text-xl md:text-2xl font-bold text-[#fbbf24]">
-            🔥 {player.streak} <span className="text-xs text-[#6b6358]">days</span>
+            <Flame className="inline-block w-4 h-4 -mt-0.5 text-[#fbbf24]" strokeWidth={2} />
+            <span ref={streakRef}>{player.streak}</span> <span className="text-xs text-[#6b6358]">days</span>
           </p>
           <p className="font-mono text-[10px] text-[#3d3830]">Keep it going!</p>
         </motion.div>
@@ -142,7 +181,8 @@ export default function DashboardPage() {
             Coins Earned
           </span>
           <p className="font-mono text-xl md:text-2xl font-bold text-[#c084fc]">
-            ⬡ {player.coins.toLocaleString()}
+            <Hexagon className="inline-block w-4 h-4 -mt-0.5 text-[#c084fc]" strokeWidth={2} />
+            <span ref={coinsRef}>{player.coins.toLocaleString()}</span>
           </p>
           <p className="font-mono text-[10px] text-[#3d3830]">Earned from practice</p>
         </motion.div>
@@ -152,7 +192,7 @@ export default function DashboardPage() {
             Skills Mastered
           </span>
           <p className="font-mono text-xl md:text-2xl font-bold text-[#34d399]">
-            {player.completedMissions.length}
+            <span ref={skillsRef}>{player.completedMissions.length}</span>
           </p>
           <p className="font-mono text-[10px] text-[#3d3830]">topics completed</p>
         </motion.div>
@@ -170,7 +210,8 @@ export default function DashboardPage() {
             </p>
           </div>
           <span className="chip-glow text-[10px] font-mono text-[#22d3ee] px-2.5 py-1 rounded-full border border-[#06b6d4]/30 bg-[#06b6d4]/10">
-            ✦ AI Generated
+            <Sparkles className="inline-block w-3 h-3 mr-1" strokeWidth={2} />
+            AI Generated
           </span>
         </div>
 
@@ -208,7 +249,7 @@ export default function DashboardPage() {
                   </p>
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-mono text-[#3d3830]">
-                      ⏱ {rec.timeEstimate}
+                      <Clock className="inline-block w-3 h-3 -mt-0.5" strokeWidth={2} /> {rec.timeEstimate}
                     </span>
                     <span className="text-[10px] font-mono text-[#6b6358]">
                       {rec.domain}

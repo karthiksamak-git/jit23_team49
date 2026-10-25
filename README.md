@@ -70,11 +70,15 @@ Instead of static tutorials or generic questionnaires, CareerVerse uses **Groq L
 - npm / pnpm
 
 ### 2. Environment Configuration
-Create `.env` and `apps/web/.env.local` with your Groq API Key:
+**Demo keys are pre-configured** — `apps/web/.env` ships with a working Groq key and Adzuna job-search credentials, so a fresh clone/zip download runs with zero setup.
+
+To use your own keys instead, edit `apps/web/.env` (or create `apps/web/.env.local`, which takes precedence):
 ```env
 GROQ_API_KEY="your_groq_api_key_here"
+NEXT_PUBLIC_ADZUNA_APP_ID="your_adzuna_app_id"
+NEXT_PUBLIC_ADZUNA_APP_KEY="your_adzuna_app_key"
 ```
-> 🔐 Keep the key server-side only. The web app calls the `/api/ai` proxy route, which reads `GROQ_API_KEY` on the server — never prefix it with `NEXT_PUBLIC_`, that would ship your key to every browser.
+> Keep the Groq key server-side only. The web app calls the `/api/ai` proxy route, which reads `GROQ_API_KEY` on the server — never prefix it with `NEXT_PUBLIC_`, that would ship your key to every browser.
 
 ### 3. Start Development Server
 ```bash
@@ -86,6 +90,19 @@ npm run dev
 ```
 
 Visit **http://localhost:3000** in your browser!
+
+### 4. Practice Lab engine (optional)
+The Practice Lab is a real multi-language compiler. JavaScript runs in the
+browser with no setup; every other language is executed by a local
+[Piston](https://github.com/engineer-man/piston) engine:
+
+```bash
+npm run engine:up     # starts the engine container on :2000
+```
+
+The first run of each language downloads its runtime into the `piston_data`
+volume (network required once per language). Set `PISTON_URL` if your engine
+lives elsewhere.
 
 ---
 

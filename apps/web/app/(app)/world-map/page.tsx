@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useGame } from "@/lib/game-context";
 import { chatWithGroq } from "@/lib/ai-client";
 import { matchRealmId } from "@/lib/realm-match";
+import { gsap, useGSAP, prefersReducedMotion } from "@/lib/gsap";
+import { Swords, AlertTriangle, Sparkles, X, Hexagon, Coins, Check, Zap, Lock, Wand2, Diamond, Circle } from "lucide-react";
 
 /* Tiny blur-up placeholder: instant terrain paint while the webp loads (2.3MB png → 105KB webp) */
 const TERRAIN_BLUR = "data:image/jpeg;base64,/9j/2wBDABQODxIPDRQSEBIXFRQYHjIhHhwcHj0sLiQySUBMS0dARkVQWnNiUFVtVkVGZIhlbXd7gYKBTmCNl4x9lnN+gXz/2wBDARUXFx4aHjshITt8U0ZTfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHz/wAARCAASABgDASIAAhEBAxEB/8QAFwABAQEBAAAAAAAAAAAAAAAAAAMCBv/EAB0QAAICAgMBAAAAAAAAAAAAAAABAhEDMSEiQRL/xAAWAQEBAQAAAAAAAAAAAAAAAAAAAQL/xAAVEQEBAAAAAAAAAAAAAAAAAAAAEf/aAAwDAQACEQMRAD8A5qGNTl2aSKyxfEaVNEHkuqS4Kqakl4VmJdW9Uwam41xQCxCPppaAAy9gAD//2Q==";
@@ -185,9 +187,12 @@ function statusColor(status: string) {
 
 function typeLabel(type: string) {
   switch (type) {
-    case "boss": return "⚔ Capstone Trial";
-    case "challenge": return "◆ Skill Challenge";
-    default: return "◇ Practice Lesson";
+    case "boss":
+      return <span className="flex items-center gap-1.5"><Swords className="w-3 h-3" strokeWidth={2} /> Capstone Trial</span>;
+    case "challenge":
+      return <span className="flex items-center gap-1.5"><Diamond className="w-3 h-3" strokeWidth={2} /> Skill Challenge</span>;
+    default:
+      return <span className="flex items-center gap-1.5"><Circle className="w-3 h-3" strokeWidth={2} /> Practice Lesson</span>;
   }
 }
 
@@ -203,6 +208,10 @@ export default function DynamicWorldMapPage() {
   const [showAiModal, setShowAiModal] = useState(false);
   const [customGoal, setCustomGoal] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+
+  /** GSAP scope — node entrances, ink-path draw-on, terrain parallax */
+  const mapRef = useRef<HTMLDivElement>(null);
+  const terrainRef = useRef<HTMLDivElement>(null);
 
   // Deep-link: /world-map?forge=1 opens the AI forge pre-filled with the
   // user's recommendation (used by the dashboard when no realm matches).
@@ -238,6 +247,91 @@ export default function DynamicWorldMapPage() {
   }, [player.recommendedDomain, player.realmName, realms]);
 
   const activeRealm = realms.find((r) => r.id === activeDomainId) || realms[0];
+
+  /* ═══════ GSAP: ink-path draw-on, node stagger, terrain parallax ═══════
+     Runs only on the client; auto-reverts on unmount. Re-runs whenever
+     the active realm changes so switching domains replays the reveal.
+     Respects prefers-reduced-motion (nothing is hidden if it's on). */
+  useGSAP(
+    () => {
+      if (prefersReducedMotion()) return;
+
+      const scope = mapRef.current;
+      if (!scope) return;
+
+      // Ink paths draw on — animate stroke-dashoffset from hidden to shown.
+      const paths = scope.querySelectorAll<SVGLineElement>(".ink-path, .ink-path-active");
+      if (paths.length) {
+        paths.forEach((p) => {
+          const len = (p as SVGLineElement).getTotalLength?.() || 200;
+          gsap.set(p, { strokeDasharray: len, strokeDashoffset: len });
+        });
+        gsap.to(paths, {
+          strokeDashoffset: 0,
+          duration: 1.1,
+          ease: "power2.inOut",
+          stagger: 0.08,
+          delay: 0.15,
+          onComplete: () => {
+            // Restore the CSS dashed style for inactive paths once drawn.
+            paths.forEach((p) => {
+              if (p.classList.contains("ink-path")) {
+                gsap.set(p, { strokeDasharray: "6 4", strokeDashoffset: 0 });
+              } else {
+                gsap.set(p, { strokeDasharray: "none", strokeDashoffset: 0 });
+              }
+            });
+          },
+        });
+      }
+
+      // Nodes cascade up along the path order.
+      const nodes = scope.querySelectorAll<HTMLElement>("[data-map-node]");
+      if (nodes.length) {
+        gsap.from(nodes, {
+          autoAlpha: 0,
+          y: 26,
+          scale: 0.7,
+          duration: 0.6,
+          ease: "back.out(1.6)",
+          stagger: 0.09,
+          delay: 0.2,
+          clearProps: "opacity,visibility,transform",
+        });
+      }
+    },
+    { scope: mapRef, dependencies: [activeDomainId] }
+  );
+
+  /* Terrain parallax lives in its own effect so the pointer listeners are
+     added exactly once and removed on unmount (useGSAP only reverts
+     tweens, not manually-added listeners). */
+  useEffect(() => {
+    if (prefersReducedMotion()) return;
+    const scope = mapRef.current;
+    const terrain = terrainRef.current;
+    if (!scope || !terrain) return;
+
+    const qx = gsap.quickTo(terrain, "x", { duration: 0.8, ease: "power3.out" });
+    const qy = gsap.quickTo(terrain, "y", { duration: 0.8, ease: "power3.out" });
+
+    const onMove = (e: PointerEvent) => {
+      const r = scope.getBoundingClientRect();
+      const dx = (e.clientX - r.left) / r.width - 0.5;
+      const dy = (e.clientY - r.top) / r.height - 0.5;
+      qx(dx * -18);
+      qy(dy * -14);
+    };
+    const onLeave = () => { qx(0); qy(0); };
+
+    scope.addEventListener("pointermove", onMove);
+    scope.addEventListener("pointerleave", onLeave);
+    return () => {
+      scope.removeEventListener("pointermove", onMove);
+      scope.removeEventListener("pointerleave", onLeave);
+      qx(0); qy(0);
+    };
+  }, []);
 
   // Dynamic Level Unlocking Logic
   const liveMissions = useMemo(() => {
@@ -336,30 +430,30 @@ Return ONLY a valid JSON object:
   }
 
   return (
-    <div className="min-h-[calc(100vh-48px)] flex flex-col lg:flex-row relative">
+    <div className="min-h-[calc(100vh-56px)] lg:h-[calc(100vh-56px)] lg:overflow-hidden flex flex-col lg:flex-row relative">
 
-      {/* ══════ LEFT PANEL — Domain Switcher & AI Generator ══════ */}
-      <aside className="lg:w-80 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-[#2a2520]/40 p-6 space-y-6 bg-[#060709]/70 backdrop-blur-md">
+      {/* ══════ LEFT PANEL — Domain Switcher (compact) ══════ */}
+      <aside className="lg:w-72 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-[#2a2520]/40 p-4 lg:p-5 space-y-3 bg-[#060709]/70 backdrop-blur-md lg:h-full lg:overflow-y-auto">
 
         {/* Dynamic Domain Switcher */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <label className="block font-mono text-[10px] text-[#6b6358] uppercase tracking-widest">
               Domain Realms
             </label>
             <button
               onClick={() => setShowAiModal(true)}
-              className="text-[10px] font-mono text-[#06b6d4] hover:underline flex items-center gap-1"
+              className="text-[10px] font-mono text-[#06b6d4] hover:underline"
             >
-              + AI Roadmap Generator
+              + AI Generator
             </button>
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-col gap-1.5">
             {realms.map((r) => (
               <button
                 key={r.id}
                 onClick={() => { setActiveDomainId(r.id); setSelected(null); }}
-                className={`py-1.5 px-3 rounded-lg text-xs font-medium tracking-wider transition-all ${
+                className={`py-1.5 px-2.5 rounded-lg text-xs font-medium tracking-wider text-left transition-all ${
                   activeDomainId === r.id
                     ? "bg-[#06b6d4]/15 text-[#22d3ee] border border-[#06b6d4]/40 font-semibold"
                     : "surface text-[#6b6358] hover:text-[#c8c0b0]"
@@ -370,85 +464,11 @@ Return ONLY a valid JSON object:
             ))}
           </div>
         </div>
-
-        <div className="ink-divider-teal" />
-
-        {/* Honest fallback: recommendation has no built-in realm yet */}
-        {noMatchDomain && (
-          <div className="rounded-xl px-4 py-4 space-y-2 border border-[#f59e0b]/30 bg-[#f59e0b]/[0.06]">
-            <p className="text-[10px] font-mono text-[#fbbf24] uppercase tracking-widest">
-              ⚠ No learning path yet
-            </p>
-            <p className="text-xs text-[#9a9182] leading-relaxed">
-              We don&apos;t have a built-in realm for <strong className="text-[#e8dfc8]">{noMatchDomain}</strong>.
-              Forge a custom AI roadmap for it below — or pick any realm from the list.
-            </p>
-            <button
-              onClick={() => { setCustomGoal(noMatchDomain); setShowAiModal(true); sfx("click"); }}
-              className="btn-teal w-full py-2 rounded-lg text-[11px] font-semibold uppercase tracking-wider"
-            >
-              ✨ Forge {noMatchDomain} Roadmap
-            </button>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <span className="text-[10px] font-mono text-[#06b6d4] uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-[#06b6d4]/30 bg-[#06b6d4]/10">
-            Active Domain
-          </span>
-          <h2 className="font-cinzel text-xl font-bold text-[#e8dfc8] tracking-wider leading-tight">
-            {activeRealm.name}
-          </h2>
-          <p className="text-xs text-[#6b6358]">
-            {activeRealm.subtitle}
-          </p>
-        </div>
-
-        {/* Intro */}
-        <div className="dialogue-box-teal rounded-xl px-4 py-4">
-          <p className="text-xs text-[#9a9182] leading-relaxed">
-            {activeRealm.narrativeIntro}
-          </p>
-        </div>
-
-        {/* Search Filter */}
-        <div className="space-y-1.5">
-          <input
-            type="text"
-            placeholder="Search levels..."
-            value={filterQuery}
-            onChange={(e) => setFilterQuery(e.target.value)}
-            className="w-full bg-[#0a0b0d] border border-[#2a2520] rounded-lg px-3 py-2 text-xs text-[#e8dfc8] placeholder:text-[#3d3830] focus:outline-none focus:border-[#06b6d4]"
-          />
-        </div>
-
-        <div className="ink-divider-teal" />
-
-        {/* Progress Stats */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs font-mono">
-            <span className="text-[#6b6358]">Domain Progress</span>
-            <span className="text-[#34d399] font-bold">
-              {completedCount} / {totalCount} ({progressPct}%)
-            </span>
-          </div>
-          <div className="xp-track h-2 rounded-full">
-            <div className="xp-fill-emerald rounded-full" style={{ width: `${progressPct}%` }} />
-          </div>
-        </div>
-
-        {/* AI Generator CTA */}
-        <button
-          onClick={() => setShowAiModal(true)}
-          className="btn-teal w-full py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2 mt-4"
-        >
-          <span>✨ Forge Custom AI Roadmap</span>
-        </button>
       </aside>
 
       {/* ══════ CENTER — Dynamic Interactive Map ══════ */}
-      <div className="flex-1 relative overflow-hidden min-h-[550px]">
-        <div className="absolute inset-0 bg-[#040506]/25">
+      <div className="flex-1 relative overflow-hidden min-h-[550px] lg:h-full" ref={mapRef}>
+        <div className="absolute inset-0 bg-[#040506]/25" ref={terrainRef}>
           {/* Cinematic terrain backdrop (dark theme) */}
           <img
             src="/png/terrain-map.webp"
@@ -463,10 +483,43 @@ Return ONLY a valid JSON object:
           <div className="absolute inset-0 bg-gradient-to-b from-[#040506]/75 via-[#040506]/35 to-[#040506]/85" />
           <div className="absolute inset-0 opacity-[0.14]"
             style={{
-              backgroundImage: `radial-gradient(circle at 25% 30%, rgba(6,182,212,0.35) 0%, transparent 50%),
-                                radial-gradient(circle at 75% 70%, rgba(168,85,247,0.35) 0%, transparent 50%)`
+              backgroundImage: `radial-gradient(circle at 25% 30%, rgba(6,182,212,0.14) 0%, transparent 50%),
+                                radial-gradient(circle at 75% 70%, rgba(168,85,247,0.12) 0%, transparent 50%)`
             }}
           />
+        </div>
+
+        {/* ══════ DOMAIN PROGRESS — floating top-center overlay ══════ */}
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
+          <div className="pointer-events-auto flex items-center gap-4 px-5 py-2.5 rounded-full bg-[#060709]/90 border border-[#2a2520]/60 backdrop-blur-md shadow-[0_8px_30px_rgba(0,0,0,0.6)]">
+            <div className="text-left">
+              <p className="font-mono text-[9px] text-[#6b6358] uppercase tracking-[0.2em] leading-none mb-1">
+                Domain Progress
+              </p>
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-mono text-sm font-bold text-[#34d399] leading-none">
+                  {completedCount}
+                </span>
+                <span className="font-mono text-[10px] text-[#6b6358] leading-none">
+                  / {totalCount} levels
+                </span>
+                <span className="font-mono text-[10px] text-[#3d3830] leading-none">
+                  ({progressPct}%)
+                </span>
+              </div>
+            </div>
+            <div className="w-32 lg:w-44">
+              <div className="xp-track h-1.5 rounded-full">
+                <div
+                  className="xp-fill-emerald rounded-full transition-[width] duration-700 ease-out"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <p className="font-mono text-[9px] text-[#3d3830] mt-1 text-right truncate max-w-full">
+                {activeRealm.name.replace("Operation: ", "")}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Connecting SVG lines */}
@@ -507,7 +560,9 @@ Return ONLY a valid JSON object:
                 }`}
                 style={{ left: `${m.x}%`, top: `${m.y}%` }}
               >
-                <div className="flex flex-col items-center gap-1.5">
+                {/* GSAP animates THIS wrapper (no transform classes), so it never
+                    fights Tailwind's translate/scale on the button above. */}
+                <div className="flex flex-col items-center gap-1.5" data-map-node>
                   <img
                     src={pngIcon}
                     alt={m.title}
@@ -533,109 +588,183 @@ Return ONLY a valid JSON object:
         </div>
       </div>
 
-      {/* ══════ RIGHT PANEL — Mission Details & Actions ══════ */}
-      <AnimatePresence>
-        {selected && (
-          <motion.aside
-            initial={{ x: 100, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 100, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="lg:w-96 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-[#2a2520]/40 p-6 space-y-6 bg-[#0a0b0d]/95 backdrop-blur z-40"
-          >
-            <button
-              onClick={() => setSelected(null)}
-              className="text-[#6b6358] hover:text-[#e8dfc8] text-xs font-mono transition-colors"
+      {/* ══════ RIGHT PANEL — Domain Details (or Mission Detail when selected) ══════ */}
+      <aside className="lg:w-72 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-[#2a2520]/40 p-5 space-y-4 bg-[#060709]/70 backdrop-blur-md lg:h-full lg:overflow-y-auto z-30">
+        <AnimatePresence mode="wait">
+          {selected ? (
+            /* ── Mission Detail ── */
+            <motion.div
+              key={`mission-${selected.id}`}
+              initial={{ opacity: 0, x: 16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 16 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-4"
             >
-              ✕ Close Panel
-            </button>
+              <button
+                onClick={() => setSelected(null)}
+                className="text-[#6b6358] hover:text-[#e8dfc8] text-xs font-mono transition-colors flex items-center gap-1"
+              >
+                <X className="w-3.5 h-3.5" strokeWidth={2} />
+                Close Panel
+              </button>
 
-            <div className="space-y-2">
-              <span className={`text-[10px] font-mono uppercase tracking-widest ${
-                selected.type === "boss" ? "text-[#fb7185]" : "text-[#06b6d4]"
-              }`}>
-                {typeLabel(selected.type)}
-              </span>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full border border-[#06b6d4]/40 p-2 bg-[#0c0e11] overflow-hidden">
-                  <img
-                    src={selected.iconUrl || defaultIcons[selected.iconKey]}
-                    alt={selected.title}
-                    suppressHydrationWarning
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-                <div>
-                  <h3 className="font-cinzel text-lg font-bold text-[#e8dfc8] tracking-wider">
-                    {selected.title}
-                  </h3>
-                  <p className="text-xs text-[#6b6358]">{selected.subtitle}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="ink-divider-teal" />
-
-            <div className="dialogue-box-teal rounded-xl px-4 py-4">
-              <p className="text-xs text-[#9a9182] leading-relaxed">
-                {selected.lore}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-[10px] font-mono text-[#6b6358] tracking-widest uppercase">
-                Rewards Offered
-              </p>
-              <div className="flex items-center gap-4 font-mono text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[#22d3ee]">⬡</span>
-                  <span className="font-bold text-[#22d3ee]">+{selected.xp} XP</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[#c084fc]">🪙</span>
-                  <span className="font-bold text-[#c084fc]">+{Math.floor(selected.xp * 0.8)} Coins</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="ink-divider-teal" />
-
-            {/* Dynamic Action Buttons linking to Dojo */}
-            {selected.status === "completed" ? (
               <div className="space-y-2">
-                <div className="p-3 rounded-xl border border-[#10b981]/30 bg-[#10b981]/10 text-center text-xs text-[#34d399] font-medium">
-                  ✓ Level Completed
+                <span className={`text-[10px] font-mono uppercase tracking-widest ${
+                  selected.type === "boss" ? "text-[#fb7185]" : "text-[#06b6d4]"
+                }`}>
+                  {typeLabel(selected.type)}
+                </span>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full border border-[#06b6d4]/40 p-2 bg-[#0c0e11] overflow-hidden shrink-0">
+                    <img
+                      src={selected.iconUrl || defaultIcons[selected.iconKey]}
+                      alt={selected.title}
+                      suppressHydrationWarning
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <div>
+                    <h3 className="font-cinzel text-lg font-bold text-[#e8dfc8] tracking-wider leading-tight">
+                      {selected.title}
+                    </h3>
+                    <p className="text-xs text-[#6b6358]">{selected.subtitle}</p>
+                  </div>
                 </div>
-                <Link
-                  href={`/worlds/dojo?missionId=${selected.id}&title=${encodeURIComponent(selected.title)}&domain=${encodeURIComponent(activeRealm.name)}&lore=${encodeURIComponent(selected.lore)}&xp=${selected.xp}`}
-                  className="btn-teal block text-center py-3 rounded-xl text-xs uppercase tracking-wider w-full font-semibold"
-                >
-                  Re-take Practice Trial →
-                </Link>
               </div>
-            ) : selected.status === "active" ? (
+
+              <div className="ink-divider-teal" />
+
+              <div className="dialogue-box-teal rounded-xl px-4 py-4">
+                <p className="text-xs text-[#9a9182] leading-relaxed">
+                  {selected.lore}
+                </p>
+              </div>
+
               <div className="space-y-2">
-                <Link
-                  href={`/worlds/dojo?missionId=${selected.id}&title=${encodeURIComponent(selected.title)}&domain=${encodeURIComponent(activeRealm.name)}&lore=${encodeURIComponent(selected.lore)}&xp=${selected.xp}`}
-                  className="btn-primary block text-center py-3.5 rounded-xl text-xs uppercase tracking-widest w-full font-bold shadow-lg"
-                >
-                  <span>Start Practice Trial →</span>
-                </Link>
-                <button
-                  onClick={() => handleFastCompleteMission(selected)}
-                  className="text-[10px] font-mono text-[#6b6358] hover:text-[#22d3ee] block text-center w-full py-1 transition-colors"
-                >
-                  ⚡ Fast Complete (Demo Unlock)
-                </button>
+                <p className="text-[10px] font-mono text-[#6b6358] tracking-widest uppercase">
+                  Rewards Offered
+                </p>
+                <div className="flex items-center gap-4 font-mono text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <Hexagon className="w-3.5 h-3.5 text-[#22d3ee]" strokeWidth={2} />
+                    <span className="font-bold text-[#22d3ee]">+{selected.xp} XP</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Coins className="w-3.5 h-3.5 text-[#c084fc]" strokeWidth={2} />
+                    <span className="font-bold text-[#c084fc]">+{Math.floor(selected.xp * 0.8)} Coins</span>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="p-3.5 rounded-xl border border-[#2a2520] bg-[#040506] text-center text-xs text-[#6b6358]">
-                🔒 Complete previous levels to unlock
+
+              <div className="ink-divider-teal" />
+
+              {/* Dynamic Action Buttons linking to Dojo */}
+              {selected.status === "completed" ? (
+                <div className="space-y-2">
+                  <div className="p-3 rounded-xl border border-[#10b981]/30 bg-[#10b981]/10 text-center text-xs text-[#34d399] font-medium flex items-center justify-center gap-1.5">
+                    <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
+                    Level Completed
+                  </div>
+                  <Link
+                    href={`/worlds/dojo?missionId=${selected.id}&title=${encodeURIComponent(selected.title)}&domain=${encodeURIComponent(activeRealm.name)}&lore=${encodeURIComponent(selected.lore)}&xp=${selected.xp}`}
+                    className="btn-teal block text-center py-3 rounded-xl text-xs uppercase tracking-wider w-full font-semibold"
+                  >
+                    Re-take Practice Trial →
+                  </Link>
+                </div>
+              ) : selected.status === "active" ? (
+                <div className="space-y-2">
+                  <Link
+                    href={`/worlds/dojo?missionId=${selected.id}&title=${encodeURIComponent(selected.title)}&domain=${encodeURIComponent(activeRealm.name)}&lore=${encodeURIComponent(selected.lore)}&xp=${selected.xp}`}
+                    className="btn-primary block text-center py-3.5 rounded-xl text-xs uppercase tracking-widest w-full font-bold shadow-lg"
+                  >
+                    <span>Start Practice Trial →</span>
+                  </Link>
+                  <button
+                    onClick={() => handleFastCompleteMission(selected)}
+                    className="text-[10px] font-mono text-[#6b6358] hover:text-[#22d3ee] block text-center w-full py-1 transition-colors"
+                  >
+                    <Zap className="w-3 h-3 inline" strokeWidth={2} /> Fast Complete (Demo Unlock)
+                  </button>
+                </div>
+              ) : (
+                <div className="p-3.5 rounded-xl border border-[#2a2520] bg-[#040506] text-center text-xs text-[#6b6358] flex items-center justify-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5" strokeWidth={2} />
+                  Complete previous levels to unlock
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            /* ── Domain Details ── */
+            <motion.div
+              key="domain-info"
+              initial={{ opacity: 0, x: -16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -16 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-4"
+            >
+              {/* Honest fallback: recommendation has no built-in realm yet */}
+              {noMatchDomain && (
+                <div className="rounded-xl px-4 py-4 space-y-2 border border-[#f59e0b]/30 bg-[#f59e0b]/[0.06]">
+                  <p className="text-[10px] font-mono text-[#fbbf24] uppercase tracking-widest flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" strokeWidth={2} />
+                    No learning path yet
+                  </p>
+                  <p className="text-xs text-[#9a9182] leading-relaxed">
+                    We don&apos;t have a built-in realm for <strong className="text-[#e8dfc8]">{noMatchDomain}</strong>.
+                    Forge a custom AI roadmap for it below — or pick any realm from the list.
+                  </p>
+                  <button
+                    onClick={() => { setCustomGoal(noMatchDomain); setShowAiModal(true); sfx("click"); }}
+                    className="btn-teal w-full py-2 rounded-lg text-[11px] font-semibold uppercase tracking-wider"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" strokeWidth={2} />
+                    Forge {noMatchDomain} Roadmap
+                  </button>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <span className="text-[10px] font-mono text-[#06b6d4] uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-[#06b6d4]/30 bg-[#06b6d4]/10 inline-block">
+                  Active Domain
+                </span>
+                <h2 className="font-cinzel text-xl font-bold text-[#e8dfc8] tracking-wider leading-tight">
+                  {activeRealm.name}
+                </h2>
+                <p className="text-xs text-[#6b6358]">
+                  {activeRealm.subtitle}
+                </p>
               </div>
-            )}
-          </motion.aside>
-        )}
-      </AnimatePresence>
+
+              {/* Intro */}
+              <div className="dialogue-box-teal rounded-xl px-4 py-3.5">
+                <p className="text-xs text-[#9a9182] leading-relaxed">
+                  {activeRealm.narrativeIntro}
+                </p>
+              </div>
+
+              {/* Search Filter */}
+              <input
+                type="text"
+                placeholder="Search levels..."
+                value={filterQuery}
+                onChange={(e) => setFilterQuery(e.target.value)}
+                className="w-full bg-[#0a0b0d] border border-[#2a2520] rounded-lg px-3 py-2 text-xs text-[#e8dfc8] placeholder:text-[#3d3830] focus:outline-none focus:border-[#06b6d4]"
+              />
+
+              {/* AI Generator CTA */}
+              <button
+                onClick={() => setShowAiModal(true)}
+                className="btn-teal w-full py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2"
+              >
+                <span>Forge Custom AI Roadmap</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </aside>
 
       {/* ══════ AI ROADMAP GENERATOR MODAL ══════ */}
       <AnimatePresence>
@@ -648,8 +777,9 @@ Return ONLY a valid JSON object:
               className="surface max-w-md w-full p-6 rounded-2xl space-y-5 border border-[#06b6d4]/30 shadow-2xl bg-[#090b0f]"
             >
               <div className="space-y-1">
-                <h3 className="font-cinzel text-lg font-bold text-[#22d3ee] tracking-wider">
-                  ✨ AI Custom Roadmap Generator
+                <h3 className="font-cinzel text-lg font-bold text-[#22d3ee] tracking-wider flex items-center gap-2">
+                  <Wand2 className="w-4 h-4" strokeWidth={2} />
+                  AI Custom Roadmap Generator
                 </h3>
                 <p className="text-xs text-[#9a9182] leading-relaxed">
                   Enter any IT domain or career goal to dynamically generate a custom 5-level learning path.

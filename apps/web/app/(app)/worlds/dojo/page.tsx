@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { Heart, Flame, Code, Search, Puzzle, Clapperboard, Scale, Target, Lightbulb, Check, X, Wrench, Repeat, Pin, Clock } from "lucide-react";
 import Link from "next/link";
 import { useGame } from "@/lib/game-context";
 import { generateDojoChallenges, generateEasierRetryChallenge, DojoChallenge, QuestionType } from "@/lib/ai-dojo";
@@ -399,9 +400,7 @@ function DojoContent() {
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-1">
                 {Array.from({ length: MAX_HEARTS }).map((_, i) => (
-                  <span key={i} className={`text-sm transition-all ${i < hearts ? "opacity-100 scale-100" : "opacity-20 scale-90 grayscale"}`}>
-                    ❤️
-                  </span>
+                  <Heart key={i} className={`w-4 h-4 transition-all ${i < hearts ? "opacity-100 scale-100 text-[#fb7185]" : "opacity-20 scale-90 grayscale"}`} fill={i < hearts ? "currentColor" : "none"} strokeWidth={2} />
                 ))}
               </div>
 
@@ -410,9 +409,10 @@ function DojoContent() {
                   key={combo}
                   initial={{ scale: 1.5 }}
                   animate={{ scale: 1 }}
-                  className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#f97316]/15 border border-[#f97316]/40 text-[#fdba74] animate-pulse"
+                  className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#f97316]/15 border border-[#f97316]/40 text-[#fdba74] animate-pulse flex items-center gap-1"
                 >
-                  🔥 {combo} COMBO
+                  <Flame className="w-3 h-3" strokeWidth={2} />
+                  {combo} COMBO
                 </motion.span>
               )}
 
@@ -510,7 +510,7 @@ function DojoContent() {
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-mono text-[#06b6d4] uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-[#06b6d4]/30 bg-[#06b6d4]/10">
-                    {current.type === "code-fill" ? "💻 Code Fill" : current.type === "bug-hunt" ? "🔍 Bug Hunt" : current.type === "pseudocode-order" ? "🧩 Logic Sequence" : current.type === "scenario" ? "🎬 Scenario" : current.type === "true-false" ? "⚖️ True or False" : "🎯 Quiz"}
+                    {current.type === "code-fill" ? "Code Fill" : current.type === "bug-hunt" ? "Bug Hunt" : current.type === "pseudocode-order" ? "Logic Sequence" : current.type === "scenario" ? "Scenario" : current.type === "true-false" ? "True or False" : "Quiz"}
                   </span>
                   <span className="font-mono text-[10px] text-[#6b6358]">
                     {answeredCount + 1}/{totalPlanned}
@@ -518,7 +518,7 @@ function DojoContent() {
                 </div>
 
                 <div className="dialogue-box-teal p-3 rounded-xl text-xs text-[#c8c0b0] italic flex items-center gap-3">
-                  <span className="text-lg">💡</span>
+                  <Lightbulb className="w-4 h-4 text-[#fbbf24] shrink-0" strokeWidth={2} />
                   <p>&quot;{current.senseiSays}&quot;</p>
                 </div>
 
@@ -556,8 +556,8 @@ function DojoContent() {
                       disabled={selectedAnswer !== null}
                       className={`p-4 rounded-xl text-left border text-xs md:text-sm font-medium transition-all flex items-start gap-3 ${cardStyle}`}
                     >
-                      <span className="font-mono text-xs opacity-60 w-5 text-center mt-0.5 shrink-0">
-                        {isTrueFalse ? (i === 0 ? "✓" : "✗") : String.fromCharCode(65 + i)}
+                      <span className="font-mono text-xs opacity-60 w-5 text-center mt-0.5 shrink-0 flex items-center justify-center">
+                        {isTrueFalse ? (i === 0 ? <Check className="w-3.5 h-3.5" strokeWidth={2.5} /> : <X className="w-3.5 h-3.5" strokeWidth={2.5} />) : String.fromCharCode(65 + i)}
                       </span>
                       <span className="flex-1 leading-relaxed">{optText}</span>
                     </motion.button>
@@ -584,8 +584,14 @@ function DojoContent() {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 font-bold text-sm flex-wrap">
-                          <span>
-                            {selectedAnswer === current.correct ? "✅ Correct!" : selectedAnswer === -1 ? "⏰ Time's Up!" : "❌ Not Quite!"}
+                          <span className="flex items-center gap-1.5">
+                            {selectedAnswer === current.correct ? (
+                              <><Check className="w-4 h-4 text-[#34d399]" strokeWidth={2.5} /> Correct!</>
+                            ) : selectedAnswer === -1 ? (
+                              <><Clock className="w-4 h-4 text-[#fbbf24]" strokeWidth={2} /> Time&apos;s Up!</>
+                            ) : (
+                              <><X className="w-4 h-4 text-[#fb7185]" strokeWidth={2.5} /> Not Quite!</>
+                            )}
                           </span>
                           {selectedAnswer === current.correct && (
                             <motion.span
@@ -631,8 +637,9 @@ function DojoContent() {
               className="space-y-6 surface rounded-2xl p-6 md:p-8 border border-[#fbbf24]/40 shadow-[0_0_25px_rgba(251,191,36,0.08)]"
             >
               <div className="flex items-center justify-between gap-4">
-                <span className="text-[10px] font-mono text-[#fbbf24] uppercase tracking-widest px-3 py-1 rounded-full border border-[#fbbf24]/30 bg-[#fbbf24]/10">
-                  🛠 Fix Your Mistakes {isGeneratingRetry ? "• preparing…" : ""}
+                <span className="text-[10px] font-mono text-[#fbbf24] uppercase tracking-widest px-3 py-1 rounded-full border border-[#fbbf24]/30 bg-[#fbbf24]/10 flex items-center gap-1.5">
+                  <Wrench className="w-3 h-3" strokeWidth={2} />
+                  Fix Your Mistakes {isGeneratingRetry ? "• preparing…" : ""}
                 </span>
                 <span className="font-mono text-[10px] text-[#6b6358]">
                   {mistakeIdx + 1}/{mistakeQueue.length}
@@ -640,7 +647,7 @@ function DojoContent() {
               </div>
 
               <div className="dialogue-box-teal p-3.5 rounded-xl text-xs text-[#c8c0b0] italic flex items-center gap-3">
-                <span className="text-lg">🔁</span>
+                <Repeat className="w-4 h-4 text-[#22d3ee] shrink-0" strokeWidth={2} />
                 <p>&quot;Same concepts, <strong>different format</strong> — prove you truly understand!&quot;</p>
               </div>
 
@@ -669,8 +676,8 @@ function DojoContent() {
                       disabled={selectedAnswer !== null || isGeneratingRetry}
                       className={`p-4 rounded-xl text-left border text-xs md:text-sm font-medium transition-all flex items-start gap-3 ${cardStyle}`}
                     >
-                      <span className="font-mono text-xs opacity-60 w-5 text-center mt-0.5 shrink-0">
-                        {current.type === "true-false" ? (i === 0 ? "✓" : "✗") : String.fromCharCode(65 + i)}
+                      <span className="font-mono text-xs opacity-60 w-5 text-center mt-0.5 shrink-0 flex items-center justify-center">
+                        {current.type === "true-false" ? (i === 0 ? <Check className="w-3.5 h-3.5" strokeWidth={2.5} /> : <X className="w-3.5 h-3.5" strokeWidth={2.5} />) : String.fromCharCode(65 + i)}
                       </span>
                       <span className="flex-1 leading-relaxed">{optText}</span>
                     </motion.button>
@@ -692,15 +699,22 @@ function DojoContent() {
                         : "border-[#fb7185]/40 bg-[#fb7185]/10 text-[#fb7185]"
                     }`}>
                       <div className="font-bold text-sm flex items-center gap-2 flex-wrap">
-                        <span>{selectedAnswer === current.correct ? "✅ Mistake fixed!" : "🔁 Still tricky —"}</span>
+                        <span className="flex items-center gap-1.5">
+                          {selectedAnswer === current.correct ? (
+                            <><Check className="w-4 h-4" strokeWidth={2.5} /> Mistake fixed!</>
+                          ) : (
+                            <><Repeat className="w-4 h-4" strokeWidth={2} /> Still tricky —</>
+                          )}
+                        </span>
                         {selectedAnswer === current.correct && (
                           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#10b981]/20 border border-[#10b981]/30">+{lastGain} XP</span>
                         )}
                       </div>
                       <p className="text-xs text-[#e8dfc8] leading-relaxed">{current.explanation}</p>
                       {selectedAnswer !== current.correct && (
-                        <p className="text-[10px] font-mono text-[#fbbf24]">
-                          📌 Queued for spaced-repetition review: 1 day, then 3, 7, 14, 30 days.
+                        <p className="text-[10px] font-mono text-[#fbbf24] flex items-center gap-1.5">
+                          <Pin className="w-3 h-3" strokeWidth={2} />
+                          Queued for spaced-repetition review: 1 day, then 3, 7, 14, 30 days.
                         </p>
                       )}
                       <button
@@ -747,11 +761,17 @@ function DojoContent() {
                 </div>
                 <div className="surface rounded-xl p-3 border border-[#f97316]/20 space-y-1">
                   <span className="text-[9px] text-[#6b6358] block">BEST COMBO</span>
-                  <span className="font-mono text-base font-bold text-[#fdba74]">🔥 {bestCombo}</span>
+                  <span className="font-mono text-base font-bold text-[#fdba74] flex items-center gap-1.5">
+                    <Flame className="w-4 h-4" strokeWidth={2} />
+                    {bestCombo}
+                  </span>
                 </div>
                 <div className="surface rounded-xl p-3 border border-[#a855f7]/20 space-y-1">
                   <span className="text-[9px] text-[#6b6358] block">HEARTS LEFT</span>
-                  <span className="font-mono text-base font-bold text-[#fb7185]">❤️ {hearts}</span>
+                  <span className="font-mono text-base font-bold text-[#fb7185] flex items-center gap-1.5">
+                    <Heart className="w-4 h-4" strokeWidth={2} />
+                    {hearts}
+                  </span>
                 </div>
               </div>
 
@@ -760,8 +780,9 @@ function DojoContent() {
               </p>
 
               {stillFailing.length > 0 && (
-                <p className="text-[10px] font-mono text-[#fbbf24] max-w-sm mx-auto">
-                  📌 {stillFailing.length} concept{stillFailing.length > 1 ? "s" : ""} queued for spaced-repetition review (1 → 3 → 7 → 14 → 30 days).
+                <p className="text-[10px] font-mono text-[#fbbf24] max-w-sm mx-auto flex items-center justify-center gap-1.5">
+                  <Pin className="w-3 h-3" strokeWidth={2} />
+                  {stillFailing.length} concept{stillFailing.length > 1 ? "s" : ""} queued for spaced-repetition review (1 → 3 → 7 → 14 → 30 days).
                 </p>
               )}
 
@@ -803,7 +824,10 @@ function DojoContent() {
                 </div>
                 <div className="surface rounded-xl p-3 border border-[#f97316]/20 space-y-1">
                   <span className="text-[9px] text-[#6b6358] block">BEST COMBO</span>
-                  <span className="font-mono text-base font-bold text-[#fdba74]">🔥 {bestCombo}</span>
+                  <span className="font-mono text-base font-bold text-[#fdba74] flex items-center gap-1.5">
+                    <Flame className="w-4 h-4" strokeWidth={2} />
+                    {bestCombo}
+                  </span>
                 </div>
               </div>
 

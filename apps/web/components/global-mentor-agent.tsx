@@ -7,6 +7,7 @@ import { useGame } from "@/lib/game-context";
 import { playSound } from "@/lib/sound-engine";
 import { CleanMasterImg } from "@/lib/clean-samurai";
 import { getMentorResponse, ChatMessage } from "@/lib/ai-client";
+import { X } from "lucide-react";
 
 export function GlobalMentorAgent() {
   const pathname = usePathname();
@@ -113,7 +114,7 @@ export function GlobalMentorAgent() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div className="fixed bottom-6 left-6 z-50 flex flex-col items-start">
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -142,9 +143,10 @@ export function GlobalMentorAgent() {
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-[#6b6358] hover:text-[#c8c0b0] text-sm px-2 py-1 transition-colors"
+                className="text-[#6b6358] hover:text-[#c8c0b0] px-2 py-1 transition-colors"
+                aria-label="Close mentor chat"
               >
-                ✕
+                <X className="w-4 h-4" strokeWidth={2} />
               </button>
             </div>
 
@@ -235,8 +237,8 @@ export function GlobalMentorAgent() {
         className="relative group flex flex-col items-center gap-1.5 focus:outline-none cursor-pointer"
       >
         <div className="relative w-16 h-16 md:w-20 md:h-20 flex items-center justify-center">
-          <span className="absolute top-0 right-0 z-20 w-3.5 h-3.5 rounded-full bg-[#10b981] border-2 border-[#040506] animate-ping" />
-          <span className="absolute top-0 right-0 z-20 w-3.5 h-3.5 rounded-full bg-[#10b981] border-2 border-[#040506]" />
+          <span className="absolute top-0 left-0 z-20 w-3.5 h-3.5 rounded-full bg-[#10b981] border-2 border-[#040506] animate-ping" />
+          <span className="absolute top-0 left-0 z-20 w-3.5 h-3.5 rounded-full bg-[#10b981] border-2 border-[#040506]" />
           <CleanMasterImg
             alt="AI Mentor"
             className="w-full h-full object-contain filter drop-shadow-[0_8px_20px_rgba(0,0,0,0.9)] transition-transform group-hover:scale-110"

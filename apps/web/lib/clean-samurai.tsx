@@ -112,6 +112,9 @@ export function CleanNarratorImg({
   );
 }
 
+/* The Master mentor PNG already ships with clean transparency. The
+   aggressive pixel-cleaning pass strips its armour highlights and makes
+   it look ghostly, so this component renders the original file untouched. */
 export function CleanMasterImg({
   alt = "Master Mentor",
   className = "",
@@ -119,10 +122,9 @@ export function CleanMasterImg({
   alt?: string;
   className?: string;
 }) {
-  const cleanSrc = useCleanImageSrc("/png/ec32cb93-5408-46f4-8f4e-d47f2e09b640.png");
   return (
     <img
-      src={cleanSrc}
+      src="/png/ec32cb93-5408-46f4-8f4e-d47f2e09b640.png"
       alt={alt}
       suppressHydrationWarning
       className={className}

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { CleanNarratorImg } from "@/lib/clean-samurai";
+import { gsap, useGSAP, prefersReducedMotion } from "@/lib/gsap";
 import { useGame } from "@/lib/game-context";
 import {
   generateFirstQuestion,
@@ -41,6 +42,24 @@ const DOMAIN_COLORS: Record<string, string[]> = {
 /* ═══════════════════════════════════════════
    FIXED BOTTOM-LEFT NARRATOR CHARACTER & SPEECH BUBBLE
    ═══════════════════════════════════════════ */
+/* A single finished narration line: fades + lifts into place with GSAP.
+   Separate component so each line owns its own animation lifecycle and
+   the typewriter's state logic above is untouched. */
+function NarrationLine({ text }: { text: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+
+  useGSAP(() => {
+    if (prefersReducedMotion() || !ref.current) return;
+    gsap.from(ref.current, { autoAlpha: 0, y: 8, duration: 0.4, ease: "power2.out" });
+  }, { scope: ref });
+
+  return (
+    <p ref={ref} className="font-cinzel text-sm md:text-base text-[#c8c0b0] leading-relaxed italic">
+      &quot;{text}&quot;
+    </p>
+  );
+}
+
 function BottomLeftNarrator({
   lines,
   onDone,
@@ -136,9 +155,7 @@ function BottomLeftNarrator({
         {/* Dialogue Text */}
         <div className="space-y-2.5 max-h-48 overflow-y-auto scrollbar-thin">
           {done.map((l, i) => (
-            <p key={i} className="font-cinzel text-sm md:text-base text-[#c8c0b0] leading-relaxed italic">
-              &quot;{l}&quot;
-            </p>
+            <NarrationLine key={i} text={l} />
           ))}
           {lineIdx < lines.length && (
             <p className="font-cinzel text-sm md:text-base text-[#b49b64] leading-relaxed italic font-medium">
@@ -205,7 +222,7 @@ function WelcomeStep({
           onClick={onContinue}
           disabled={!name.trim()}
           className={`btn-scroll w-full py-4 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
-            !name.trim() ? "opacity-30 cursor-not-allowed" : "shadow-[0_0_25px_rgba(180,155,100,0.4)]"
+            !name.trim() ? "opacity-30 cursor-not-allowed" : "shadow-[0_0_16px_rgba(180,155,100,0.12)]"
           }`}
         >
           Begin AI Assessment →
@@ -234,7 +251,7 @@ function RecommendationCard({
       onClick={() => onSelect?.(rec)}
       className={`w-full text-left rounded-2xl p-6 md:p-7 border-2 bg-[#090b0f]/95 backdrop-blur-md space-y-3 shadow-2xl transition-all ${
         top
-          ? "border-[#b49b64]/70 ring-1 ring-[#b49b64]/40 shadow-[0_0_35px_rgba(180,155,100,0.25)]"
+          ? "border-[#b49b64]/70 ring-1 ring-[#b49b64]/40 shadow-[0_0_18px_rgba(180,155,100,0.10)]"
           : "border-[#b49b64]/25 hover:border-[#b49b64]/60 hover:scale-[1.01]"
       }`}
     >
@@ -355,7 +372,7 @@ function ResultsStep({
         <div className="text-center space-y-4 pt-2">
           <button
             onClick={onCreateAccount}
-            className="btn-scroll px-12 py-4 rounded-xl text-base font-bold uppercase tracking-widest shadow-[0_0_30px_rgba(180,155,100,0.4)]"
+            className="btn-scroll px-12 py-4 rounded-xl text-base font-bold uppercase tracking-widest shadow-[0_0_16px_rgba(180,155,100,0.12)]"
           >
             Still Explore The Platform →
           </button>
@@ -453,7 +470,7 @@ function ResultsStep({
       <div className="text-center space-y-4 pt-2">
         <button
           onClick={onCreateAccount}
-          className="btn-scroll px-12 py-4 rounded-xl text-base font-bold uppercase tracking-widest shadow-[0_0_30px_rgba(180,155,100,0.4)]"
+          className="btn-scroll px-12 py-4 rounded-xl text-base font-bold uppercase tracking-widest shadow-[0_0_16px_rgba(180,155,100,0.12)]"
         >
           Continue With {top.domainName} →
         </button>
@@ -520,7 +537,7 @@ function AdditionalInfoStep({
             className={`btn-scroll px-10 py-3.5 rounded-xl text-xs md:text-sm font-bold uppercase tracking-widest transition-all ${
               text.trim().length < 8 || isAnalyzing
                 ? "opacity-30 cursor-not-allowed"
-                : "shadow-[0_0_25px_rgba(180,155,100,0.4)]"
+                : "shadow-[0_0_16px_rgba(180,155,100,0.12)]"
             }`}
           >
             {isAnalyzing ? "Mapping Your Road…" : "Find My Real Path →"}
@@ -889,16 +906,12 @@ export default function OnboardingPage() {
                             className={`btn-scroll px-10 py-3.5 rounded-lg text-xs md:text-sm font-bold uppercase tracking-widest transition-all ${
                               currentSelection.length === 0
                                 ? "opacity-30 cursor-not-allowed"
-                                : "shadow-[0_0_25px_rgba(180,155,100,0.4)]"
+                                : "shadow-[0_0_16px_rgba(180,155,100,0.12)]"
                             }`}
                           >
                             {step + 1 === TOTAL_QUESTIONS ? "Complete Assessment →" : "Continue →"}
                           </button>
-                        ) : (
-                          <span className="font-mono text-[10px] text-[#6b6358] uppercase tracking-widest px-6">
-                            Clicking answers automatically
-                          </span>
-                        )}
+                        ) : null}
                       </div>
                     </motion.div>
                   )}

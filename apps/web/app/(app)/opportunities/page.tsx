@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Heart, IndianRupee, MapPin, Radio, RotateCcw, Search, X, Zap } from "lucide-react";
 import { useGame } from "@/lib/game-context";
 import {
   searchJobs,
@@ -107,7 +108,7 @@ export default function OpportunitiesPage() {
       {/* Header */}
       <div className="text-center space-y-2">
         <span className="chip-glow text-[10px] font-mono text-[#34d399] uppercase tracking-widest px-3 py-1 rounded-full border border-[#10b981]/30 bg-[#10b981]/10">
-          ⚡ Live from Adzuna · India
+          <Zap className="inline w-3 h-3 -mt-0.5" strokeWidth={2} /> Live from Adzuna · India
         </span>
         <h1 className="font-cinzel text-3xl font-bold aurora-text tracking-wider">Jobs & Internships</h1>
         <p className="text-xs text-[#6b6358] max-w-xl mx-auto">
@@ -151,7 +152,7 @@ export default function OpportunitiesPage() {
           >
             {ADZUNA_LOCATIONS.map((l) => (
               <option key={l || "all"} value={l}>
-                {l === "" ? "📍 All India" : l === "All India" ? "📍 All India" : `📍 ${l}`}
+                {l === "" || l === "All India" ? "All India" : l}
               </option>
             ))}
           </select>
@@ -173,7 +174,7 @@ export default function OpportunitiesPage() {
             onChange={(e) => applyFilters({ datePosted: e.target.value as AdzunaFilters["datePosted"] })}
             className={selectClass}
           >
-            <option value="">📅 Any time</option>
+            <option value="">Any time</option>
             <option value="1">Last 24 hours</option>
             <option value="3">Last 3 days</option>
             <option value="7">Last week</option>
@@ -185,9 +186,9 @@ export default function OpportunitiesPage() {
             onChange={(e) => applyFilters({ sortBy: e.target.value as AdzunaFilters["sortBy"] })}
             className={selectClass}
           >
-            <option value="date">↕ Newest first</option>
-            <option value="salary">↕ Highest salary</option>
-            <option value="relevance">↕ Most relevant</option>
+            <option value="date">Newest first</option>
+            <option value="salary">Highest salary</option>
+            <option value="relevance">Most relevant</option>
           </select>
         </div>
 
@@ -212,7 +213,7 @@ export default function OpportunitiesPage() {
           {/* Salary slider */}
           <div className="flex-1 flex items-center gap-3 min-w-[220px]">
             <span className="text-[10px] font-mono text-[#6b6358] whitespace-nowrap">
-              💰 {draft.salaryMin ? `Min ₹${(draft.salaryMin / 100000).toFixed(0)}L+` : "Any salary"}
+              <IndianRupee className="inline w-3 h-3 -mt-0.5" strokeWidth={2} /> {draft.salaryMin ? `Min ₹${(draft.salaryMin / 100000).toFixed(0)}L+` : "Any salary"}
             </span>
             <input
               type="range"
@@ -236,7 +237,7 @@ export default function OpportunitiesPage() {
             }}
             className="text-[10px] font-mono text-[#6b6358] hover:text-[#fb7185] transition-colors cursor-pointer whitespace-nowrap"
           >
-            ↺ Reset filters
+            <RotateCcw className="inline w-3 h-3" strokeWidth={2} /> Reset filters
           </button>
         </div>
       </div>
@@ -254,7 +255,7 @@ export default function OpportunitiesPage() {
               : "text-[#6b6358] hover:text-[#c8c0b0] hover:bg-white/[0.03]"
           }`}
         >
-          ❤ Saved ({savedIds.length})
+          <Heart className="inline w-3 h-3" strokeWidth={2} fill={showSavedOnly ? "currentColor" : "none"} /> Saved ({savedIds.length})
         </button>
         {loading && !showSavedOnly && <span className="text-[10px] font-mono text-[#6b6358] animate-pulse">fetching live listings…</span>}
       </div>
@@ -272,20 +273,20 @@ export default function OpportunitiesPage() {
         </div>
       ) : error ? (
         <div className="text-center py-12 surface rounded-xl space-y-3">
-          <span className="text-3xl">📡</span>
+          <Radio className="w-8 h-8 mx-auto text-[#6b6358]" strokeWidth={1.5} />
           <p className="text-sm text-[#fb7185]">Couldn&apos;t load jobs. Try again.</p>
           <button
             onClick={() => fetchPage(filters, 1, false)}
             className="btn-emerald px-6 py-2 rounded-lg text-xs uppercase tracking-wider cursor-pointer"
           >
-            ↻ Retry
+            <RotateCcw className="inline w-3 h-3" strokeWidth={2} /> Retry
           </button>
         </div>
       ) : visibleJobs.length === 0 ? (
         <div className="text-center py-12 surface rounded-xl space-y-3">
-          <span className="text-3xl">🔍</span>
+          <Search className="w-8 h-8 mx-auto text-[#6b6358]" strokeWidth={1.5} />
           <p className="text-sm text-[#c8c0b0]">
-            {showSavedOnly ? "No saved jobs yet — tap ❤ on any listing." : "No real jobs match these filters right now."}
+            {showSavedOnly ? "No saved jobs yet — tap the heart on any listing." : "No real jobs match these filters right now."}
           </p>
           {!showSavedOnly && (
             <>
@@ -328,7 +329,7 @@ export default function OpportunitiesPage() {
                       <div className="space-y-1 min-w-0">
                         <h3 className="text-sm font-semibold text-[#e8dfc8] leading-snug">{job.title}</h3>
                         <p className="text-xs text-[#6b6358]">
-                          {job.company} • 📍 {job.location}
+                          {job.company} • <MapPin className="inline w-3 h-3 -mt-0.5" strokeWidth={2} /> {job.location}
                         </p>
                       </div>
                       <button
@@ -336,10 +337,10 @@ export default function OpportunitiesPage() {
                           e.stopPropagation();
                           toggleSave(job);
                         }}
-                        className={`text-lg shrink-0 transition-transform hover:scale-125 cursor-pointer ${isSaved ? "" : "grayscale opacity-40"}`}
+                        className={`shrink-0 transition-transform hover:scale-110 cursor-pointer ${isSaved ? "text-[#fb7185]" : "text-[#6b6358]"}`}
                         aria-label={isSaved ? "Unsave job" : "Save job"}
                       >
-                        ❤
+                        <Heart className="w-4 h-4" strokeWidth={2} fill={isSaved ? "currentColor" : "none"} />
                       </button>
                     </div>
 
@@ -417,12 +418,12 @@ export default function OpportunitiesPage() {
               <div className="sticky top-0 bg-[#0a0b0d]/95 backdrop-blur border-b border-[#2a2520] p-5 space-y-2">
                 <div className="flex items-start justify-between gap-3">
                   <h2 className="text-lg font-bold text-[#e8dfc8] leading-snug">{detail.title}</h2>
-                  <button onClick={() => setDetail(null)} className="text-[#6b6358] hover:text-[#e8dfc8] text-xl leading-none cursor-pointer">
-                    ✕
+                  <button onClick={() => setDetail(null)} className="text-[#6b6358] hover:text-[#e8dfc8] leading-none cursor-pointer" aria-label="Close">
+                    <X className="w-4 h-4" strokeWidth={2} />
                   </button>
                 </div>
                 <p className="text-xs text-[#6b6358]">
-                  {detail.company} • 📍 {detail.location}
+                  {detail.company} • <MapPin className="inline w-3 h-3 -mt-0.5" strokeWidth={2} /> {detail.location}
                 </p>
                 <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono pt-1">
                   <span className="px-2 py-0.5 rounded-full border border-[#06b6d4]/30 bg-[#06b6d4]/10 text-[#22d3ee] uppercase">
@@ -461,7 +462,7 @@ export default function OpportunitiesPage() {
                         : "border-[#2a2520] text-[#6b6358] hover:text-[#c8c0b0]"
                     }`}
                   >
-                    ❤ {savedIds.includes(detail.id) ? "Saved" : "Save"}
+                    <Heart className="inline w-3 h-3 -mt-0.5" strokeWidth={2} fill={savedIds.includes(detail.id) ? "currentColor" : "none"} /> {savedIds.includes(detail.id) ? "Saved" : "Save"}
                   </button>
                 </div>
               </div>

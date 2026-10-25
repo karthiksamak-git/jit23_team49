@@ -4,6 +4,17 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 import { CleanSamuraiImg } from "@/lib/clean-samurai";
+import {
+  BarChart3,
+  BrainCircuit,
+  Check,
+  Cloud,
+  Globe,
+  Palette,
+  Server,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 import { evaluateInterviewAnswer, InterviewScorecard, chatWithGroq } from "@/lib/ai-client";
 
 /* ═══════════════════════════════════════════
@@ -16,18 +27,18 @@ interface RoleOption {
   id: string;
   title: string;
   domain: string;
-  icon: string;
+  icon: LucideIcon;
   difficulty: string;
   color: string;
 }
 
 const roles: RoleOption[] = [
-  { id: "backend", title: "Backend Developer", domain: "Backend & APIs", icon: "⚙️", difficulty: "Medium", color: "teal" },
-  { id: "fullstack", title: "Full-Stack Developer", domain: "Frontend & Backend", icon: "🌐", difficulty: "Medium", color: "blue" },
-  { id: "ai_eng", title: "AI / ML Engineer", domain: "Machine Learning", icon: "🤖", difficulty: "Hard", color: "rose" },
-  { id: "frontend", title: "Frontend Developer", domain: "UI & Web Apps", icon: "🎨", difficulty: "Medium", color: "purple" },
-  { id: "devops", title: "DevOps Engineer", domain: "Cloud & CI/CD", icon: "☁️", difficulty: "Hard", color: "amber" },
-  { id: "data", title: "Data Analyst", domain: "Data & Analytics", icon: "📊", difficulty: "Medium", color: "emerald" },
+  { id: "backend", title: "Backend Developer", domain: "Backend & APIs", icon: Server, difficulty: "Medium", color: "teal" },
+  { id: "fullstack", title: "Full-Stack Developer", domain: "Frontend & Backend", icon: Globe, difficulty: "Medium", color: "blue" },
+  { id: "ai_eng", title: "AI / ML Engineer", domain: "Machine Learning", icon: BrainCircuit, difficulty: "Hard", color: "rose" },
+  { id: "frontend", title: "Frontend Developer", domain: "UI & Web Apps", icon: Palette, difficulty: "Medium", color: "purple" },
+  { id: "devops", title: "DevOps Engineer", domain: "Cloud & CI/CD", icon: Cloud, difficulty: "Hard", color: "amber" },
+  { id: "data", title: "Data Analyst", domain: "Data & Analytics", icon: BarChart3, difficulty: "Medium", color: "emerald" },
 ];
 
 const diffColors: Record<string, string> = {
@@ -129,7 +140,7 @@ Format: Return ONLY the 3 questions separated by triple pipes (|||). No numbers,
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
       <div className="text-center space-y-2">
-        <span className="text-[10px] font-mono text-[#a855f7] uppercase tracking-widest px-3 py-1 rounded-full border border-[#a855f7]/30 bg-[#a855f7]/10">
+        <span className="text-[10px] font-mono text-[#b49b64] uppercase tracking-widest px-3 py-1 rounded-full border border-[#b49b64]/30 bg-[#b49b64]/10">
           AI-Powered Practice
         </span>
         <h1 className="font-cinzel text-3xl font-bold text-[#e8dfc8] tracking-wider">
@@ -161,7 +172,7 @@ Format: Return ONLY the 3 questions separated by triple pipes (|||). No numbers,
                     }`}
                   >
                     <div className="flex items-center gap-3 mb-2">
-                      <span className="text-xl">{r.icon}</span>
+                      <r.icon className="w-5 h-5 text-[#c8c0b0]" strokeWidth={1.75} />
                       <div>
                         <h3 className={`text-sm font-semibold ${selectedRole.id === r.id ? c.text : "text-[#e8dfc8]"}`}>
                           {r.title}
@@ -270,11 +281,11 @@ Format: Return ONLY the 3 questions separated by triple pipes (|||). No numbers,
           animate={{ opacity: 1, scale: 1 }}
           className="space-y-8"
         >
-          <div className="rounded-2xl p-8 text-center space-y-4 border border-[#06b6d4]/20 bg-gradient-to-br from-[#06b6d4]/5 to-[#a855f7]/5">
+          <div className="rounded-2xl p-8 text-center space-y-4 border border-[#b49b64]/25 bg-[#090b0f]/90">
             <span className="text-[10px] font-mono text-[#10b981] uppercase tracking-widest">
               Interview Complete
             </span>
-            <h2 className="font-cinzel text-3xl font-bold bg-gradient-to-r from-[#06b6d4] to-[#a855f7] bg-clip-text text-transparent">
+            <h2 className="font-cinzel text-3xl font-bold text-[#e8dfc8]">
               Overall Score: {avgOverall}/100
             </h2>
             <p className="text-xs text-[#6b6358] max-w-lg mx-auto">
@@ -326,13 +337,13 @@ Format: Return ONLY the 3 questions separated by triple pipes (|||). No numbers,
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                   <div className="space-y-1.5">
-                    <span className="text-[10px] text-[#34d399] uppercase font-medium">✓ Strengths</span>
+                    <span className="text-[10px] text-[#34d399] uppercase font-medium"><Check className="inline w-3 h-3 mr-1" strokeWidth={2.5} />Strengths</span>
                     <ul className="list-disc list-inside text-xs text-[#c8c0b0] space-y-1">
                       {card.strengths.map((s, i) => <li key={i}>{s}</li>)}
                     </ul>
                   </div>
                   <div className="space-y-1.5">
-                    <span className="text-[10px] text-[#fbbf24] uppercase font-medium">⚡ Areas to Improve</span>
+                    <span className="text-[10px] text-[#fbbf24] uppercase font-medium"><Zap className="inline w-3 h-3 mr-1" strokeWidth={2} />Areas to Improve</span>
                     <ul className="list-disc list-inside text-xs text-[#c8c0b0] space-y-1">
                       {card.improvements.map((imp, i) => <li key={i}>{imp}</li>)}
                     </ul>

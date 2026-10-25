@@ -422,6 +422,7 @@ Rules:
 - 2 short dialogue lines in senseiDialogue
 - Always include an "others" option
 - Simple, clear language
+- NEVER ask about learning style, preferred learning method, or how they like to learn — the platform teaches everyone the same way, so this question is pointless. Ask about their interests, experience, or goals instead.
 - Do NOT wrap in markdown backticks. Return raw JSON only.`,
   };
 
@@ -452,7 +453,6 @@ export async function generateNextQuestion(
     "their coding experience level",
     "what kind of problems they enjoy solving (visual vs logic vs data)",
     "which specific IT-career-related activities interest them most (be VERY concrete: name real fields like web development, mobile apps, data analysis, cybersecurity, AI, cloud, design, sales, marketing, product management, testing, etc.)",
-    "how they prefer to learn new things",
     "how much time they can dedicate each day",
     "what their primary career goal is",
   ];
@@ -491,6 +491,7 @@ Rules:
 - For IT activities/interests topic, set multiSelect to true
 - Option labels must clearly name real career fields, tools or technologies (these labels are scored against a career taxonomy)
 - Use clear, simple language
+- NEVER ask about learning style, preferred learning method, or "favorite way to learn" — the platform teaches everyone the same way, so that question is pointless. If the assigned topic is about learning, redirect it to their career interests or goals instead.
 - Do NOT wrap in markdown backticks. Return raw JSON only.`,
   };
 
@@ -571,20 +572,6 @@ function getFallbackQuestion(userName: string, questionNumber: number): Onboardi
         { id: "others", label: "Others", description: "Exploring other fields or specialized technologies" },
       ],
       multiSelect: true,
-    },
-    {
-      id: "learning_style",
-      senseiDialogue: [
-        "Understanding how you learn is key to making fast progress.",
-        "How do you prefer to absorb new knowledge?",
-      ],
-      question: "What is your preferred learning style?",
-      options: [
-        { id: "hands_on", label: "Practical Projects", description: "Build real projects right away and learn by doing" },
-        { id: "reading", label: "Structured Concepts", description: "Understand core theory first, then apply it" },
-        { id: "mix", label: "Balanced Approach", description: "A mix of quick theory and hands-on practice" },
-        { id: "others", label: "Others", description: "Other self-directed or visual learning styles" },
-      ],
     },
     {
       id: "time_commitment",

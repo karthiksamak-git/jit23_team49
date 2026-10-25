@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 import { CleanSamuraiImg } from "@/lib/clean-samurai";
 import { GlobalMentorAgent } from "@/components/global-mentor-agent";
-import { CursorEffects } from "@/components/cursor-effects";
+import { gsap, ScrollTrigger, prefersReducedMotion } from "@/lib/gsap";
+import { Flame, Volume2, VolumeX, Hexagon } from "lucide-react";
 
 /* ═══════════════════════════════════════════
    APP LAYOUT — Top navigation bar
@@ -19,8 +20,31 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileNav, setMobileNav] = useState(false);
   const { player, signOut, soundOn, toggleSound, sfx } = useGame();
   const prevCoins = useRef<number | null>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
 
-  // 💰 Soft coin ping when the balance grows
+  /* Scroll progress bar — GSAP ScrollTrigger scales a gradient bar across
+     the top edge as the page scrolls. No-ops for reduced-motion users. */
+  useEffect(() => {
+    if (prefersReducedMotion() || !progressRef.current) return;
+    const el = progressRef.current;
+    gsap.set(el, { scaleX: 0, transformOrigin: "left center" });
+
+    const st = ScrollTrigger.create({
+      trigger: document.body,
+      start: "top top",
+      end: "bottom bottom",
+      onUpdate: (self) => {
+        gsap.set(el, { scaleX: self.progress });
+      },
+    });
+
+    return () => {
+      st.kill();
+      gsap.set(el, { clearProps: "transform" });
+    };
+  }, []);
+
+  // Soft coin ping when the balance grows
   useEffect(() => {
     if (prevCoins.current === null) {
       prevCoins.current = player.coins;
@@ -33,7 +57,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const routes = [
     { label: "Dashboard", href: "/dashboard", color: "text-[#22d3ee]" },
     { label: "Learning Path", href: "/world-map", color: "text-[#c084fc]" },
-    { label: "Practice Lab", href: "/worlds/backend", color: "text-[#fbbf24]" },
+    { label: "Practice Lab", href: "/sandbox", color: "text-[#fbbf24]" },
     { label: "Mock Interview", href: "/interview", color: "text-[#fb7185]" },
     { label: "Jobs", href: "/opportunities", color: "text-[#34d399]" },
     { label: "My Progress", href: "/discover", color: "text-[#60a5fa]" },
@@ -56,12 +80,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* ══════ TOP BAR (Hidden on Onboarding) ══════ */}
       {!isBoarding && (
         <header className="fixed top-0 left-0 right-0 z-40 glass-bar">
+          {/* Scroll progress bar (GSAP) */}
+          <div
+            ref={progressRef}
+            aria-hidden="true"
+            className="absolute bottom-0 left-0 h-[2px] w-full bg-[#b49b64] opacity-60"
+          />
           <div className="flex items-center justify-between px-4 md:px-5 h-14 max-w-6xl mx-auto">
 
             {/* Left: Identity */}
             <Link href="/dashboard" className="flex items-center gap-3 group">
               {/* Avatar */}
-              <div className="w-8 h-8 rounded-full border border-[#06b6d4]/40 bg-[#0a0b0d] flex items-center justify-center p-0.5 overflow-hidden">
+              <div className="w-8 h-8 rounded-full border border-[#b49b64]/40 bg-[#0a0b0d] flex items-center justify-center p-0.5 overflow-hidden">
                 <CleanSamuraiImg alt="Avatar" className="w-full h-full object-contain" />
               </div>
               <div className="hidden sm:block">
@@ -91,7 +121,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     onMouseEnter={() => sfx("hover")}
                     className={`nav-pill px-3 py-1.5 text-[11px] tracking-wider font-medium rounded-lg ${
                       active
-                        ? `nav-pill-active ${r.color} bg-white/5`
+                        ? "nav-pill-active text-[#e8dfc8] bg-white/5"
                         : "text-[#6b6358] hover:text-[#c8c0b0]"
                     }`}
                   >
@@ -105,7 +135,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-3">
               {/* Streak */}
               <div className="flex items-center gap-1 float-idle">
-                <span className="text-[10px]">🔥</span>
+                <Flame className="w-3.5 h-3.5 text-[#fbbf24]" strokeWidth={2} />
                 <span className="text-xs font-mono font-bold text-[#fbbf24]">{player.streak}</span>
               </div>
               {/* Sound toggle */}
@@ -114,11 +144,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 className="text-sm transition-all hover:scale-110 cursor-pointer"
                 title={soundOn ? "Mute sound effects" : "Unmute sound effects"}
               >
-                {soundOn ? "🔊" : "🔇"}
+                {soundOn ? <Volume2 className="w-4 h-4" strokeWidth={2} /> : <VolumeX className="w-4 h-4" strokeWidth={2} />}
               </button>
               {/* Coins */}
               <div className="flex items-center gap-1">
-                <span className="text-[10px] text-[#c084fc] float-idle" style={{ animationDelay: "-2.2s" }}>⬡</span>
+                <Hexagon className="w-3.5 h-3.5 text-[#c084fc] float-idle" strokeWidth={2} style={{ animationDelay: "-2.2s" }} />
                 <span className="text-xs font-mono font-bold text-[#c084fc]">{player.coins.toLocaleString()}</span>
               </div>
 
@@ -161,7 +191,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         href={r.href}
                         onClick={() => setMobileNav(false)}
                         className={`block px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-                          active ? `${r.color} bg-white/5 nav-pill-active` : "text-[#6b6358] hover:text-[#c8c0b0]"
+                          active ? "text-[#e8dfc8] bg-white/5 nav-pill-active" : "text-[#6b6358] hover:text-[#c8c0b0]"
                         }`}
                       >
                         {r.label}
@@ -192,8 +222,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* ══════ PERSISTENT AI MENTOR ══════ */}
       <GlobalMentorAgent />
 
-      {/* ══════ DYNAMIC CURSOR FX ══════ */}
-      <CursorEffects />
     </div>
   );
 }

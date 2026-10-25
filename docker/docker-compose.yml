@@ -49,7 +49,23 @@ services:
       timeout: 10s
       retries: 5
 
+  # Practice Lab code engine — runs user-submitted programs (Piston).
+  # JavaScript runs in the browser without it; every other language in
+  # the Practice Lab compiler needs this service. Runtimes install
+  # themselves on first use into the piston_data volume.
+  engine:
+    image: ghcr.io/engineer-man/piston:latest
+    container_name: careerverse-engine
+    restart: unless-stopped
+    ports:
+      - "2000:2000"
+    volumes:
+      - piston_data:/piston
+    environment:
+      PISTON_REPO_URL: https://github.com/engineer-man/piston
+
 volumes:
   postgres_data:
   redis_data:
   neo4j_data:
+  piston_data:

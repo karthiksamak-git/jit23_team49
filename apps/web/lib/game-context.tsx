@@ -138,8 +138,12 @@ function loadFromStorage(): PlayerState {
     const raw = localStorage.getItem("cv_player_state");
     if (raw) {
       const parsed = JSON.parse(raw);
-      // Ensure new fields exist (migration)
-      return { ...defaultPlayer, ...parsed, ...onboarding };
+      // Ensure new fields exist (migration), then RE-DERIVE level/xpToNext
+      // from lifetime XP so stale stored levels (e.g. level 1 + huge XP)
+      // self-heal instead of showing a level that never advances.
+      const merged = { ...defaultPlayer, ...parsed, ...onboarding };
+      const { level, xpToNext } = calculateLevel(merged.xp || 0);
+      return { ...merged, level, xpToNext };
     }
   } catch {}
   // Legacy migration
@@ -197,14 +201,17 @@ function saveToStorage(state: PlayerState) {
 }
 
 function calculateLevel(xp: number): { level: number; xpToNext: number } {
-  // Each level requires level * 200 XP
+  // Each level requires level * 200 XP (cumulative)
   let level = 1;
   let remaining = xp;
   while (remaining >= level * 200) {
     remaining -= level * 200;
     level++;
   }
-  return { level, xpToNext: level * 200 };
+  // xpToNext = TOTAL xp needed to reach the NEXT level, so displays can
+  // compare it against player.xp (which is lifetime total XP).
+  // level 1 → 200, level 2 → 600, level 3 → 1200, ...
+  return { level, xpToNext: 100 * level * (level + 1) };
 }
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
@@ -310,15 +317,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Local authentication fallback
+    const fallbackXp = stored.xp || 100;
+    const derived = calculateLevel(fallbackXp);
     const newState: PlayerState = {
       ...(stored.email === email ? stored : defaultPlayer),
       ...onboardingData,
       isAuthenticated: true,
       email,
       characterName: onboardingData.characterName || stored.characterName || email.split("@")[0] || "Learner",
-      level: stored.level || 1,
-      xp: stored.xp || 100,
-      xpToNext: stored.xpToNext || 200,
+      level: derived.level,
+      xp: fallbackXp,
+      xpToNext: derived.xpToNext,
       streak: Math.max(stored.streak || 1, 1),
       coins: stored.coins || 20,
       realmFit: stored.realmFit || 85,

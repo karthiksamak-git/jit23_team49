@@ -19,7 +19,7 @@ function HeroCharacter() {
         alt="CareerVerse Mascot"
         className="w-[320px] md:w-[420px] h-auto object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.95)] transition-transform duration-500 hover:scale-105"
       />
-      <div className="w-56 h-5 bg-[#06b6d4]/15 rounded-[100%] blur-md -mt-5 pointer-events-none" />
+      <div className="w-56 h-5 bg-[#b49b64]/20 rounded-[100%] blur-md -mt-5 pointer-events-none" />
     </div>
   );
 }
@@ -57,9 +57,9 @@ function NarrativeReveal({ lines, onComplete }: { lines: string[]; onComplete: (
         </p>
       ))}
       {lineIndex < lines.length && (
-        <p className="text-sm md:text-base text-[#06b6d4] tracking-wide leading-relaxed">
+        <p className="text-sm md:text-base text-[#b49b64] tracking-wide leading-relaxed">
           {lines[lineIndex].slice(0, charIndex)}
-          <span className="inline-block w-[1.5px] h-[1em] bg-[#06b6d4] ml-0.5 opacity-60 cursor-blink" />
+          <span className="inline-block w-[1.5px] h-[1em] bg-[#b49b64] ml-0.5 opacity-60 cursor-blink" />
         </p>
       )}
     </div>
@@ -91,7 +91,7 @@ export default function LandingPage() {
       <div className="min-h-screen flex items-center justify-center bg-[#040506]">
         <div className="vignette" />
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#06b6d4] border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-[#b49b64] border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-[#6b6358] tracking-wider animate-pulse">Loading...</p>
         </div>
       </div>
@@ -104,7 +104,7 @@ export default function LandingPage() {
       <div className="min-h-screen flex items-center justify-center bg-[#040506]">
         <div className="vignette" />
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#06b6d4] border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-[#b49b64] border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-[#6b6358] tracking-wider">Going to your dashboard...</p>
         </div>
       </div>
@@ -117,8 +117,8 @@ export default function LandingPage() {
 
       {/* Background color blobs */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] rounded-full bg-[#06b6d4] opacity-[0.025] blur-[120px]" />
-        <div className="absolute bottom-1/4 right-1/3 w-[500px] h-[500px] rounded-full bg-[#a855f7] opacity-[0.025] blur-[120px]" />
+        <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] rounded-full bg-[#b49b64] opacity-[0.03] blur-[120px]" />
+        <div className="absolute bottom-1/4 right-1/3 w-[500px] h-[500px] rounded-full bg-[#b49b64] opacity-[0.02] blur-[120px]" />
       </div>
 
       <div className="relative z-10 flex flex-col items-center px-6 py-16 gap-8">
@@ -130,15 +130,15 @@ export default function LandingPage() {
           className="text-center space-y-2"
         >
           <h1 className="font-cinzel text-4xl md:text-6xl font-bold tracking-[0.12em]">
-            <span className="text-[#06b6d4]">CAREER</span>
-            <span className="text-[#a855f7]">VERSE</span>
+            <span className="text-[#e8dfc8]">CAREER</span>
+            <span className="text-[#b49b64]">VERSE</span>
           </h1>
           <div className="flex items-center justify-center gap-4">
-            <div className="h-px w-12 bg-gradient-to-r from-transparent to-[#06b6d4]/40" />
+            <div className="h-px w-12 bg-gradient-to-r from-transparent to-[#b49b64]/50" />
             <span className="text-[10px] tracking-[0.3em] text-[#6b6358] uppercase">
               Discover Your IT Career Path
             </span>
-            <div className="h-px w-12 bg-gradient-to-l from-transparent to-[#a855f7]/40" />
+            <div className="h-px w-12 bg-gradient-to-l from-transparent to-[#b49b64]/50" />
           </div>
         </motion.div>
 
@@ -178,7 +178,7 @@ export default function LandingPage() {
 
               <p className="text-xs text-[#3d3830] tracking-wider">
                 Already have an account?{" "}
-                <Link href="/auth" className="text-[#06b6d4] hover:underline">
+                <Link href="/auth" className="text-[#b49b64] hover:underline">
                   Sign in
                 </Link>
               </p>
