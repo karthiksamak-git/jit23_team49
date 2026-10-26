@@ -610,7 +610,7 @@
 .tag-mobile { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); color: var(--blue-bright); }
 
 /* ═════════════ SWORD CURSOR — project-wide ═════════════
-   The sword tip (hotspot 21,2 of the 64px image) is the pointing edge.
+   The sword tip (hotspot 16,2 of the 48px image) is the pointing edge.
    cursor is an inherited property, but Tailwind utilities and the rules
    above set it explicitly on many elements — `*` + !important is the
    only way to make one cursor win everywhere. The keyword after the
@@ -618,5 +618,5 @@
 *,
 *::before,
 *::after {
-  cursor: url("/cursor.png") 21 2, auto !important;
+  cursor: url("/cursor.png") 16 2, auto !important;
 }

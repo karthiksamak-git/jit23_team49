@@ -93,7 +93,7 @@ export default function DashboardPage() {
         });
         setRecommendations(recs);
       } catch (err) {
-        console.error("Failed to load recommendations:", err);
+        console.warn("Failed to load recommendations, using defaults:", err);
       } finally {
         setLoadingRecs(false);
       }

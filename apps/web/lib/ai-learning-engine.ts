@@ -80,7 +80,7 @@ Do NOT wrap in markdown backticks. Return raw JSON only.`,
     const cleaned = response.replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(cleaned) as LearningRecommendation[];
   } catch (err) {
-    console.error("Failed to generate recommendations:", err);
+    console.warn("Failed to generate recommendations, using built-in defaults:", err);
     return [
       { id: "r1", title: "Learn the Basics", description: `Start with the fundamentals of ${userProfile.domain}. Read an introductory article and take notes.`, difficulty: "Easy", timeEstimate: "20 min", domain: userProfile.domain, color: "teal" },
       { id: "r2", title: "Try a Mini Project", description: "Build something small to practice what you've learned so far.", difficulty: "Medium", timeEstimate: "45 min", domain: userProfile.domain, color: "purple" },

@@ -85,11 +85,17 @@ export async function POST(req: NextRequest) {
   }
 
   let lastError: string = "No Groq model available";
-  const candidates = cachedModel ? [cachedModel] : MODEL_POOL;
+  // Prefer the model that last worked, but keep the rest of the pool as
+  // fallbacks — a rate-limited favourite must not sink the whole request.
+  const candidates = cachedModel
+    ? [cachedModel, ...MODEL_POOL.filter((m) => m !== cachedModel)]
+    : MODEL_POOL;
 
   for (const model of candidates) {
-    try {
-      const res = await fetch(GROQ_API_URL, {
+    // Upstream 429s are transient: back off once per model, then move on.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await fetch(GROQ_API_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -104,24 +110,36 @@ export async function POST(req: NextRequest) {
         }),
       });
 
-      if (!res.ok) {
-        const errText = await res.text().catch(() => "");
-        lastError = `Groq returned HTTP ${res.status} for ${model}`;
-        // Model unavailable → try the next one; other errors are not model-related.
-        if (res.status === 404 || (res.status === 400 && errText.includes("model_not_found"))) continue;
-        return NextResponse.json({ error: lastError }, { status: 502 });
-      }
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "");
+          lastError = `Groq returned HTTP ${res.status} for ${model}`;
+          // Model unavailable → try the next one; other errors are not model-related.
+          if (res.status === 404 || (res.status === 400 && errText.includes("model_not_found"))) break;
+          if (res.status === 429) {
+            if (attempt === 0) {
+              const retryAfter = Number(res.headers.get("retry-after"));
+              const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 3) * 1000 : 1000;
+              await new Promise((r) => setTimeout(r, waitMs));
+              continue;
+            }
+            // Still rate-limited after the backoff → next model in the pool.
+            break;
+          }
+          return NextResponse.json({ error: lastError }, { status: 502 });
+        }
 
-      const data = await res.json();
-      const content = data.choices?.[0]?.message?.content;
-      if (!content) {
-        lastError = "Empty AI response";
-        continue;
+        const data = await res.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (!content) {
+          lastError = "Empty AI response";
+          break;
+        }
+        cachedModel = model;
+        return NextResponse.json({ content });
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : "Upstream fetch failed";
+        break; // network-level failure → next model
       }
-      cachedModel = model;
-      return NextResponse.json({ content });
-    } catch (err) {
-      lastError = err instanceof Error ? err.message : "Upstream fetch failed";
     }
   }
 

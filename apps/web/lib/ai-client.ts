@@ -11,25 +11,36 @@ export interface ChatMessage {
 }
 
 export async function chatWithGroq(messages: ChatMessage[], temperature = 0.7): Promise<string> {
-  try {
-    const res = await fetch("/api/ai", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages, temperature }),
-    });
+  const MAX_ATTEMPTS = 2;
+  let lastError = "AI unavailable";
 
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data?.error || `AI proxy returned HTTP ${res.status}`);
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages, temperature }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.content) {
+        return data.content as string;
+      }
+
+      lastError = data?.error || `AI proxy returned HTTP ${res.status}`;
+      // 429 (rate limit) and 5xx are transient → one backoff retry, then give
+      // up so the caller's built-in fallback content takes over.
+      const retryable = res.status === 429 || res.status >= 500;
+      if (!retryable || attempt === MAX_ATTEMPTS - 1) break;
+    } catch (err: any) {
+      lastError = err?.message || "AI unavailable";
+      if (attempt === MAX_ATTEMPTS - 1) break;
     }
-    if (!data?.content) {
-      throw new Error("Empty AI response");
-    }
-    return data.content as string;
-  } catch (err: any) {
-    console.warn("Groq AI query unavailable, proceeding with fallback:", err?.message || err);
-    throw new Error(err?.message || "AI unavailable");
+    await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
   }
+
+  console.warn("Groq AI query unavailable, proceeding with fallback:", lastError);
+  throw new Error(lastError);
 }
 
 /* ═══════════════════════════════════════════
