@@ -1,1459 +1,868 @@
-Copy the following into a single `README.md` file. It uses a dynamic, premium GitHub README style with animated headings, badges, interactive navigation, feature showcases, architecture, setup instructions, and a professional academic-project presentation.
-
-````md
-<!-- =========================================================
-     CAREERVERSE | AI-POWERED IT CAREER EXPLORATION PLATFORM
-     Premium Dynamic README | Single-File Documentation
-========================================================== -->
-
 <div align="center">
 
-# CAREERVERSE
-
-### Explore Your Potential. Master Your Skills. Engineer Your Future.
+<img width="100%" src="https://capsule-render.vercel.app/api?type=waving&height=220&color=0:080B14,35:123C69,70:5B21B6,100:00E5CC&text=CAREERVERSE&fontColor=FFFFFF&fontSize=58&fontAlignY=38&desc=Discover%20Your%20Path.%20Build%20Your%20Future.&descAlignY=58&descSize=18" alt="CareerVerse banner" />
 
 <p>
-  <strong>A Dynamic AI-Driven Platform for IT Career Exploration, Adaptive Learning, and Job Readiness</strong>
+  <a href="#overview"><img src="https://img.shields.io/badge/EXPLORE-OVERVIEW-00E5CC?style=for-the-badge&labelColor=101522" alt="Overview" /></a>
+  <a href="#features"><img src="https://img.shields.io/badge/EXPLORE-FEATURES-8B5CF6?style=for-the-badge&labelColor=101522" alt="Features" /></a>
+  <a href="#architecture"><img src="https://img.shields.io/badge/EXPLORE-ARCHITECTURE-3B82F6?style=for-the-badge&labelColor=101522" alt="Architecture" /></a>
+  <a href="#setup"><img src="https://img.shields.io/badge/EXPLORE-SETUP-10B981?style=for-the-badge&labelColor=101522" alt="Setup" /></a>
 </p>
 
-<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=21&duration=2500&pause=800&color=00E5CC&center=true&vCenter=true&width=850&lines=Discover+Your+Ideal+IT+Career;Learn+Through+Adaptive+AI+Challenges;Build+Skills+That+Employers+Need;Practice+Technical+Interviews;Turn+Your+Ambition+Into+Expertise" alt="CareerVerse animated introduction" />
-
-<br/>
+<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=20&duration=2400&pause=700&color=00E5CC&center=true&vCenter=true&width=850&lines=AI-Powered+Career+Discovery;Adaptive+Technical+Learning;Interactive+Coding+Challenges;Interview+Preparation+%2B+Job+Matching" alt="CareerVerse capabilities" />
 
 <p>
-  <img src="https://img.shields.io/badge/PROJECT-CareerVerse-00E5CC?style=for-the-badge&labelColor=080B14" alt="CareerVerse" />
-  <img src="https://img.shields.io/badge/AI-Groq%20%7C%20Llama%203.3-8B5CF6?style=for-the-badge&labelColor=080B14" alt="AI Engine" />
-  <img src="https://img.shields.io/badge/FRAMEWORK-Next.js%2015-FFFFFF?style=for-the-badge&labelColor=080B14" alt="Next.js" />
-  <img src="https://img.shields.io/badge/LANGUAGE-TypeScript-3178C6?style=for-the-badge&labelColor=080B14" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Next.js-15-FFFFFF?style=flat-square&logo=next.js&logoColor=FFFFFF&labelColor=111827" alt="Next.js 15" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=61DAFB&labelColor=111827" alt="React 19" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=FFFFFF&labelColor=111827" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Groq-Llama_3.3-8B5CF6?style=flat-square&labelColor=111827" alt="Groq Llama" />
+  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=FFFFFF&labelColor=111827" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Prisma-2D3748?style=flat-square&logo=prisma&logoColor=FFFFFF&labelColor=111827" alt="Prisma" />
+  <img src="https://img.shields.io/badge/License-MIT-10B981?style=flat-square&labelColor=111827" alt="MIT License" />
 </p>
 
-<p>
-  <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=61DAFB" alt="React 19" />
-  <img src="https://img.shields.io/badge/PostgreSQL-Database-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL" />
-  <img src="https://img.shields.io/badge/Prisma-ORM-2D3748?style=flat-square&logo=prisma&logoColor=white" alt="Prisma" />
-  <img src="https://img.shields.io/badge/Framer_Motion-Animations-FF0080?style=flat-square&logo=framer&logoColor=white" alt="Framer Motion" />
-  <img src="https://img.shields.io/badge/License-MIT-22C55E?style=flat-square" alt="MIT License" />
-</p>
-
-<br/>
-
-**Not another tutorial platform. A personalized journey from IT curiosity to career readiness.**
-
-[Overview](#-the-vision) ·
-[Features](#-the-careerverse-experience) ·
-[Architecture](#-system-architecture) ·
-[Technology](#-technology-stack) ·
-[Installation](#-get-started) ·
-[Roadmap](#-project-roadmap)
+A dynamic AI-driven platform for IT career exploration, adaptive learning, and job readiness.
 
 </div>
 
----
+<a id="overview"></a>
 
-<div align="center">
+<img src="https://img.shields.io/badge/01-OVERVIEW-00E5CC?style=flat-square&labelColor=101522" alt="01 Overview" />
 
-## THE FUTURE OF IT CAREER DISCOVERY
+CareerVerse helps engineering students and aspiring IT professionals discover career directions, develop technical skills, practice with adaptive challenges, prepare for interviews, and explore relevant entry-level opportunities—all within one connected experience.
 
-**Discover. Learn. Practice. Prove. Advance.**
+<table>
+  <tr>
+    <td width="33%" align="center">
+      <h3>Discover</h3>
+      Find a career direction with AI-guided onboarding and personalized profiling.
+    </td>
+    <td width="33%" align="center">
+      <h3>Develop</h3>
+      Follow structured roadmaps and adaptive technical challenges.
+    </td>
+    <td width="33%" align="center">
+      <h3>Advance</h3>
+      Practice interviews, identify skill gaps, and explore opportunities.
+    </td>
+  </tr>
+</table>
 
-</div>
+The goal: Turn career uncertainty into a structured, measurable, and personalized learning journey.
 
-# 01. The Vision
+<a id="features"></a>
 
-## What Is CareerVerse?
-
-**CareerVerse** is an AI-powered IT career exploration and adaptive learning platform designed for engineering students, aspiring developers, and beginners entering the technology industry.
-
-Traditional learning platforms often provide the same tutorials, exercises, and career recommendations to every learner.
-
-CareerVerse takes a different approach.
-
-It combines AI-driven career discovery, personalized learning roadmaps, adaptive technical challenges, mock interviews, and entry-level opportunity matching into one connected experience.
-
-Instead of asking learners to figure everything out themselves, CareerVerse helps them identify a suitable direction, understand what they need to learn, practice according to their current ability, and prepare for real-world opportunities.
-
-### The CareerVerse Learning Cycle
-
-```text
-                         ┌──────────────────────┐
-                         │   DISCOVER YOURSELF  │
-                         │                      │
-                         │ AI-Powered Onboarding│
-                         └──────────┬───────────┘
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │   FIND YOUR DOMAIN   │
-                         │                      │
-                         │ Personalized Career  │
-                         │       Profile         │
-                         └──────────┬───────────┘
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │   BUILD YOUR PATH    │
-                         │                      │
-                         │ AI Learning Roadmap   │
-                         └──────────┬───────────┘
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │    LEARN BY DOING    │
-                         │                      │
-                         │ Adaptive AI Dojo     │
-                         └──────────┬───────────┘
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │    PROVE YOUR SKILLS │
-                         │                      │
-                         │ Interviews & Practice│
-                         └──────────┬───────────┘
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │    EXPLORE JOBS      │
-                         │                      │
-                         │ Jobs & Internships   │
-                         └──────────┬───────────┘
-                                    │
-                                    └───────────────┐
-                                                    │
-                                                    ▼
-                                         Continue Learning
-````
-
-### The Core Philosophy
-
-| Traditional Learning               | CareerVerse                             |
-| ---------------------------------- | --------------------------------------- |
-| Generic career quizzes             | AI-generated, contextual onboarding     |
-| Fixed learning sequences           | Personalized career roadmaps            |
-| Identical questions for everyone   | Adaptive technical challenges           |
-| Repeated mistakes without guidance | AI explanations and targeted retries    |
-| Passive tutorial consumption       | Interactive practice and assessment     |
-| Interview preparation in isolation | Connected career-readiness workflow     |
-| Independent job searching          | Skill-aware job and internship matching |
-
-> **Our mission:** Make IT career exploration more personalized, technical learning more adaptive, and job preparation more actionable.
-
----
-
-# 02. The CareerVerse Experience
-
-## One Platform. Multiple Career Possibilities.
-
-CareerVerse brings together seven interconnected capabilities designed to guide a learner from initial discovery to practical career preparation.
+<img src="https://img.shields.io/badge/02-CORE_FEATURES-8B5CF6?style=flat-square&labelColor=101522" alt="02 Core Features" />
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
-### 01 / AI Career Discovery
+<img src="https://img.shields.io/badge/01-AI_DISCOVERY-00E5CC?style=flat-square&labelColor=101522" alt="AI Discovery" />
 
-**Understand where you belong in technology.**
+A career assessment shaped around the learner.
 
-* Dynamically generated onboarding questions.
-* Context-aware follow-up questions.
-* Personalized interest and background analysis.
-* Custom answers through an `Others` option.
-* Recommended IT domain and starting difficulty.
-* AI-generated career profile and learning summary.
+Context-aware questions generated by AI.
+
+Follow-up questions informed by prior answers.
+
+Personalized career-domain recommendations.
+
+Custom responses through an Others option.
+
+Interactive mentor dialogue and typewriter animations.
+
+Starting-level recommendations and learning summaries.
 
 </td>
 <td width="50%" valign="top">
 
-### 02 / Adaptive Learning Dojo
+<img src="https://img.shields.io/badge/02-ADAPTIVE_DOJO-8B5CF6?style=flat-square&labelColor=101522" alt="Adaptive Dojo" />
 
-**Learn through challenges that respond to your ability.**
+Technical practice that responds to performance.
 
-* AI-generated technical exercises.
-* Live difficulty adjustment.
-* Correct-answer progression.
-* Mistake analysis and conceptual explanations.
-* Simplified retry questions.
-* Hearts, streaks, progress indicators, and capacity tracking.
+AI-generated challenges.
+
+Difficulty adjustments based on results.
+
+Mistake analysis and conceptual explanations.
+
+Simplified retry questions.
+
+Hearts, streaks, and progress indicators.
+
+Capacity progression from Novice to Master.
 
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
 
-### 03 / Interactive Challenge Lab
+<img src="https://img.shields.io/badge/03-PRACTICE_LAB-3B82F6?style=flat-square&labelColor=101522" alt="Practice Lab" />
 
-**Move beyond reading code. Start solving problems.**
+Learn by solving—not just reading.
 
-* Multiple-choice technical scenarios.
-* Code completion exercises.
-* Bug identification and correction.
-* Pseudocode ordering challenges.
-* Progressive difficulty.
-* Language-specific coding execution through the Practice Lab engine.
+Multiple-choice technical scenarios.
+
+Code-completion exercises.
+
+Bug identification and correction.
+
+Pseudocode ordering challenges.
+
+Browser-based JavaScript execution.
+
+Optional Piston execution for supported languages.
 
 </td>
 <td width="50%" valign="top">
 
-### 04 / Career World Map
+<img src="https://img.shields.io/badge/04-WORLD_MAP-10B981?style=flat-square&labelColor=101522" alt="World Map" />
 
-**Turn a career goal into a structured learning journey.**
+A visible path from fundamentals to career goals.
 
-* Eight specialized IT learning domains.
-* Visual learning progression.
-* Prerequisite-based level unlocking.
-* Milestone-driven advancement.
-* AI-generated custom roadmaps.
-* Personalized learning paths for individual career goals.
+Eight IT learning domains.
+
+Milestone-based progression.
+
+Prerequisite-driven level unlocking.
+
+AI-generated custom learning roadmaps.
+
+Career-goal-oriented learning sequences.
+
+Clear next steps for continued development.
 
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
 
-### 05 / AI Mock Interview Chamber
+<img src="https://img.shields.io/badge/05-MOCK_INTERVIEWS-F59E0B?style=flat-square&labelColor=101522" alt="Mock Interviews" />
 
-**Practice explaining what you know.**
+Build confidence through structured practice.
 
-* Role-specific interview preparation.
-* Technical question evaluation.
-* Problem-solving assessment.
-* System-design evaluation where applicable.
-* Communication feedback.
-* Structured AI scorecards and improvement recommendations.
+Role-oriented interview questions.
+
+Technical knowledge evaluation.
+
+Problem-solving feedback.
+
+System-design assessment where relevant.
+
+Communication feedback.
+
+Scorecards and improvement recommendations.
 
 </td>
 <td width="50%" valign="top">
 
-### 06 / Job & Internship Matcher
+<img src="https://img.shields.io/badge/06-OPPORTUNITY_MATCHING-F43F5E?style=flat-square&labelColor=101522" alt="Opportunity Matching" />
 
-**Connect your skills to potential opportunities.**
+Connect skills with potential opportunities.
 
-* Entry-level job discovery.
-* Internship discovery.
-* Profile-aware opportunity matching.
-* Skill-gap analysis.
-* Match percentages.
-* Direct application links when available.
+Entry-level jobs and internships.
 
-</td>
-</tr>
-<tr>
-<td colspan="2" valign="top">
+Profile-aware opportunity matching.
 
-### 07 / Personalized Career Dashboard
+Match scores based on configured criteria.
 
-**See your progress. Understand your next move.**
+Skill-gap identification.
 
-* Personalized career overview.
-* Learning progress and completed milestones.
-* Current skill-development priorities.
-* Practice and achievement tracking.
-* Quick access to career tools.
-* Actionable next steps based on the learner's journey.
+Recommended learning actions.
+
+External application links when available.
 
 </td>
 </tr>
 </table>
 
----
+<img src="https://img.shields.io/badge/07-PERSONALIZED_DASHBOARD-38BDF8?style=flat-square&labelColor=101522" alt="Personalized Dashboard" />
 
-# 03. AI Career Discovery Engine
+A central workspace for learner progress, career profile, completed milestones, practice activity, and recommended next actions.
 
-## Your Career Journey Starts With a Conversation
+<img src="https://img.shields.io/badge/03-CAREER_DOMAINS-3B82F6?style=flat-square&labelColor=101522" alt="03 Career Domains" />
 
-CareerVerse uses an AI-driven onboarding engine to make career discovery more contextual than a conventional static questionnaire.
+<div align="center">
 
-### Dynamic Question Generation
+<img src="https://img.shields.io/badge/DOMAIN-01-00E5CC?style=flat-square" alt="Domain 1" />
 
-The onboarding experience can generate follow-up questions based on:
+CAREER REALM
 
-* The learner's previous responses.
-* Their existing technical experience.
-* Their preferred ways of learning.
-* Their interests and problem-solving preferences.
-* Their career aspirations.
-* Their familiarity with programming and IT concepts.
+EXAMPLE FOCUS
 
-The objective is to gather enough relevant context to produce a useful initial career profile.
+01
 
-### The Narrator Sensei Interface
-
-The onboarding experience is designed around an interactive AI mentor.
-
-**Experience elements:**
-
-* Character-led dialogue.
-* Typewriter-style text animations.
-* Reveal and skip controls.
-* Dynamic assessment questions.
-* Immersive background treatments.
-* Customizable answer options.
-* Contextual feedback and transitions.
-
-### Personalized Career Profiling
-
-After the assessment, the AI analyzes the available responses and recommends a suitable starting direction.
-
-Potential career domains include:
-
-| Domain                 | Example Focus                                                 |
-| ---------------------- | ------------------------------------------------------------- |
-| Frontend Development   | Interfaces, accessibility, React, web applications            |
-| Backend Development    | APIs, databases, authentication, server-side logic            |
-| Full-Stack Development | End-to-end application development                            |
-| DevOps & Cloud         | Deployment, automation, infrastructure, cloud platforms       |
-| AI & Machine Learning  | Model development, intelligent systems, applied AI            |
-| Data Science           | Data analysis, statistics, visualization, predictive modeling |
-| Cybersecurity          | Security fundamentals, threat analysis, defensive practices   |
-| Mobile Development     | Android, iOS, and cross-platform applications                 |
-
-**Important:** Career recommendations are starting points rather than definitive judgments. Learners can explore other domains and revise their goals as their interests develop.
-
----
-
-# 04. Adaptive AI Learning Dojo
-
-## A Learning Engine That Responds to You
-
-The CareerVerse Dojo transforms technical practice into a progression-based learning experience.
-
-Rather than relying entirely on a fixed sequence of questions, the engine adjusts challenge difficulty and provides targeted support based on learner performance.
-
-### Capacity Progression
-
-```text
-NOVICE
-  │
-  │ Build fundamental understanding
-  ▼
-APPRENTICE
-  │
-  │ Apply concepts to practical problems
-  ▼
-SPECIALIST
-  │
-  │ Solve complex technical challenges
-  ▼
-MASTER
-    Demonstrate advanced proficiency
-```
-
-These capacity levels represent an internal learning progression. They should not be interpreted as formal industry certifications.
-
-### Adaptive Difficulty
-
-**When the learner answers correctly:**
-
-1. Evaluate the response.
-2. Update the learner's performance state.
-3. Increase challenge complexity when appropriate.
-4. Continue to the next learning objective.
-5. Update progress indicators and relevant statistics.
-
-**When the learner answers incorrectly:**
-
-1. Identify the relevant misconception or error.
-2. Explain why the selected answer is incorrect.
-3. Break the underlying concept into smaller steps.
-4. Generate or queue a simpler retry question.
-5. Reassess understanding before advancing.
-
-### Duolingo-Inspired Engagement
-
-The Dojo combines learning mechanics with visible progress indicators.
-
-* Hearts or lives.
-* Current streaks.
-* Challenge completion.
-* Progress bars.
-* Capacity levels.
-* Immediate feedback.
-* Retry loops.
-* Gradual difficulty increases.
-
-The goal is to make progress visible without sacrificing conceptual understanding.
-
-### Example Learning Session
-
-```text
-CHALLENGE 01
-    |
-    v
-Learner answers correctly
-    |
-    v
-Performance updated
-    |
-    v
-Difficulty increases
-    |
-    v
-CHALLENGE 02
-    |
-    v
-Learner answers incorrectly
-    |
-    v
-AI identifies the knowledge gap
-    |
-    v
-Concept explanation provided
-    |
-    v
-Simplified retry generated
-    |
-    v
-Understanding reassessed
-    |
-    v
-Learning continues
-```
-
-### Technical Challenge Formats
-
-#### Multiple Choice Scenarios
-
-Learners select answers to technical questions and practical problem-solving scenarios.
-
-#### Code Completion
-
-Learners complete code by choosing suitable expressions or statements for missing sections.
-
-Example:
-
-```javascript
-function calculateTotal(price, quantity) {
-  return price * ___FILL___;
-}
-```
-
-Possible choices:
-
-```text
-A. price
-B. quantity
-C. calculateTotal
-D. return
-```
-
-#### Bug Hunt
-
-Learners inspect code, identify incorrect logic, and choose or implement the appropriate correction.
-
-#### Pseudocode Ordering
-
-Learners arrange pseudocode statements in a valid execution sequence to understand control flow and algorithmic reasoning.
-
-#### Practice Lab
-
-The Practice Lab extends technical practice with code execution.
-
-* JavaScript can run directly in the browser.
-* Other supported languages can execute through the configured local Piston engine.
-* Language runtimes and execution capabilities depend on the engine configuration.
-
----
-
-# 05. World Map & AI Roadmap Generator
-
-## Eight Domains. Multiple Paths. One Learning Journey.
-
-CareerVerse represents career development through a world-map-inspired progression system.
-
-Each domain contains learning objectives and milestones that guide learners through increasingly advanced material.
-
-### The Eight Career Realms
-
-| Realm                       | Learning Direction                                       |
-| --------------------------- | -------------------------------------------------------- |
-| Frontend Realm              | HTML, CSS, JavaScript, React, accessibility              |
-| Backend Realm               | Server-side programming, APIs, databases, authentication |
-| Full-Stack Realm            | Frontend, backend, integration, deployment               |
-| DevOps & Cloud Realm        | Linux, Git, CI/CD, containers, cloud fundamentals        |
-| AI & Machine Learning Realm | Python, mathematics, data preparation, model development |
-| Data Science Realm          | SQL, statistics, data cleaning, visualization            |
-| Cybersecurity Realm         | Networking, operating systems, security fundamentals     |
-| Mobile Realm                | Mobile UI, application architecture, APIs, deployment    |
-
-### Progression and Unlocking
-
-The learning map supports prerequisite-based advancement.
-
-```text
-WORLD MAP
-   |
-   +-- FRONTEND REALM
-   |      |
-   |      +-- LEVEL M1: Foundations
-   |      |       |
-   |      |       +-- Complete Dojo requirements
-   |      |                    |
-   |      |                    v
-   |      +-- LEVEL M2: Next learning stage
-   |              |
-   |              +-- Complete required milestones
-   |                           |
-   |                           v
-   |                  Continue progression
-   |
-   +-- BACKEND REALM
-   |
-   +-- AI / ML REALM
-   |
-   +-- DEVOPS & CLOUD REALM
-   |
-   +-- OTHER SPECIALIZED REALMS
-```
-
-Actual unlock requirements depend on the configured learning path.
-
-### AI Custom Roadmap Generator
-
-Learners can enter a specific career goal instead of choosing only from predefined tracks.
-
-**Example goal:**
-
-```text
-Become a Cloud Architect in 6 months.
-```
-
-The AI can generate a personalized five-node learning path.
-
-```text
-NODE 01
-Cloud & Networking Fundamentals
-        |
-        v
-NODE 02
-Linux, Scripting & Infrastructure Basics
-        |
-        v
-NODE 03
-Cloud Services & Architecture Patterns
-        |
-        v
-NODE 04
-Infrastructure as Code & Deployment
-        |
-        v
-NODE 05
-Architecture Project & Interview Preparation
-```
-
-This example illustrates a possible roadmap structure, not a guarantee that every generated roadmap will contain these exact topics.
-
-Roadmap content should reflect the learner's starting knowledge, target role, available time, and selected technologies.
-
----
-
-# 06. AI Mock Interview Chamber
-
-## Prepare for the Questions That Matter
-
-The Mock Interview Chamber helps learners practice communicating their technical knowledge in a structured interview-style environment.
-
-Learners can prepare for relevant IT roles and receive AI-generated evaluations of their responses.
-
-### Evaluation Dimensions
-
-| Dimension            | What It Evaluates                                       |
-| -------------------- | ------------------------------------------------------- |
-| Technical Knowledge  | Accuracy and depth of role-relevant concepts            |
-| Problem Solving      | Reasoning, approach, and solution quality               |
-| System Design        | Architecture, trade-offs, scalability, where applicable |
-| Communication        | Clarity, organization, and explanation quality          |
-| Overall Verdict      | Summary of observed performance                         |
-| Improvement Feedback | Specific areas to strengthen                            |
-
-### AI Scorecard
-
-A structured evaluation can include:
-
-```text
-INTERVIEW SCORECARD
-========================================
-
-Technical Knowledge     [Score]
-Problem Solving        [Score]
-System Design          [Score]
-Communication          [Score]
-
-Overall Assessment     [Verdict]
-
-Strengths:
-- Concepts explained accurately
-- Reasoning supported by relevant examples
-
-Improvement Areas:
-- Strengthen explanation of trade-offs
-- Practice edge cases and complexity analysis
-
-Recommended Next Steps:
-- Review relevant technical concepts
-- Solve targeted practice problems
-- Repeat a role-specific mock interview
-
-========================================
-```
-
-Scores and verdicts are AI-generated assessments, not formal hiring decisions or guarantees of interview performance.
-
----
-
-# 07. AI Job & Internship Matcher
-
-## Connect Learning to Opportunity
-
-CareerVerse helps learners explore entry-level jobs and internships relevant to their skills and career direction.
-
-The matching workflow can consider:
-
-* Career domain.
-* Technical skills.
-* Completed learning milestones.
-* Profile information.
-* Role requirements.
-* Identified skill gaps.
-
-### Opportunity Matching Workflow
-
-```text
-LEARNER PROFILE
-      |
-      v
-SKILL EXTRACTION
-      |
-      v
-OPPORTUNITY DISCOVERY
-      |
-      v
-ROLE REQUIREMENT ANALYSIS
-      |
-      v
-MATCH EVALUATION
-      |
-      v
-SKILL GAP IDENTIFICATION
-      |
-      v
-MATCHED OPPORTUNITIES
-      |
-      v
-DIRECT APPLICATION
-```
-
-### Opportunity Cards
-
-A typical result can present:
-
-```text
-ROLE: Junior Frontend Developer
-
-Career Domain:
 Frontend Development
 
-Match Percentage:
-Calculated from the configured matching method
+HTML, CSS, JavaScript, React, accessibility
 
-Relevant Skills:
-- JavaScript
-- React
-- HTML and CSS
+02
 
-Potential Skill Gaps:
-- Testing fundamentals
-- Production deployment
+Backend Development
 
-Recommended Action:
-Complete relevant learning milestones and review
-the employer's requirements.
+APIs, databases, authentication, server-side logic
 
-Application:
-External application link, when available.
-```
+03
 
-**Matching transparency:** Match percentages are estimates based on the application's configured matching logic. They should not be presented as verified probabilities of receiving an interview or job offer.
+Full-Stack Development
 
-External listings, application links, and availability depend on the configured opportunity data source.
+End-to-end application development
 
----
+04
 
-# 08. Visual Design System
+DevOps & Cloud
 
-## A Premium Dark Interface
+Linux, CI/CD, containers, cloud infrastructure
 
-CareerVerse uses a vibrant dark visual language designed to support an immersive, focused learning experience.
+05
 
-### Design Characteristics
+AI & Machine Learning
 
-* Deep dark backgrounds.
-* High-contrast typography.
-* Vibrant accent colors.
-* Glassmorphism-inspired surfaces.
-* Smooth transitions.
-* Interactive cards.
-* Animated progress indicators.
-* Character-led onboarding.
-* Responsive page layouts.
-* Consistent spacing and component patterns.
+Python, data preparation, model development
 
-### Core Color Palette
+06
 
-| Token          | Suggested Color | Purpose                           |
-| -------------- | --------------- | --------------------------------- |
-| `--teal`       | `#00E5CC`       | Primary interactive accents       |
-| `--purple`     | `#8B5CF6`       | AI and premium feature accents    |
-| `--emerald`    | `#10B981`       | Success and completion            |
-| `--amber`      | `#F59E0B`       | Warnings and progression          |
-| `--rose`       | `#F43F5E`       | Errors and attention              |
-| `--blue`       | `#3B82F6`       | Information and secondary actions |
-| `--background` | `#080B14`       | Main dark background              |
-| `--surface`    | `#111827`       | Card and panel surfaces           |
+Data Science
 
-### Design Principles
+SQL, statistics, analytics, visualization
 
-**Dynamic:** UI elements respond to user interaction and application state.
+07
 
-**Readable:** Contrast, typography, and spacing support long learning sessions.
+Cybersecurity
 
-**Consistent:** Shared components and design tokens maintain a unified experience.
+Networking, security fundamentals, threat analysis
 
-**Responsive:** Layouts adapt to desktop, tablet, and mobile viewports.
+08
 
-**Purposeful:** Animations reinforce progress and interaction rather than distracting from learning.
+Mobile Development
 
----
+Mobile interfaces, application architecture, APIs
 
-# 09. System Architecture
+</div>
 
-## A Modern AI-Powered Monorepo
+Custom AI Roadmaps
 
-CareerVerse uses a Next.js App Router application within a monorepo architecture.
+Enter a goal such as “Become a Cloud Architect in 6 months” and generate a structured learning path.
 
-The frontend, AI integration, persistence, authentication, and practice execution engine have distinct responsibilities.
+YOUR CAREER GOAL
+       │
+       ▼
+┌─────────────────────────────┐
+│ 01  FUNDAMENTALS             │
+│     Build prerequisite skills│
+└──────────────┬──────────────┘
+               ▼
+┌─────────────────────────────┐
+│ 02  CORE TECHNOLOGIES        │
+│     Learn role-specific tools│
+└──────────────┬──────────────┘
+               ▼
+┌─────────────────────────────┐
+│ 03  PRACTICAL APPLICATION    │
+│     Solve realistic problems │
+└──────────────┬──────────────┘
+               ▼
+┌─────────────────────────────┐
+│ 04  PORTFOLIO PROJECT        │
+│     Demonstrate your skills  │
+└──────────────┬──────────────┘
+               ▼
+┌─────────────────────────────┐
+│ 05  CAREER PREPARATION       │
+│     Interview and job readiness│
+└─────────────────────────────┘
 
-```text
-                         CAREERVERSE PLATFORM
-                                  |
-                                  v
-                    +---------------------------+
-                    |       PRESENTATION        |
-                    |                           |
-                    | Next.js App Router        |
-                    | React 19                  |
-                    | TypeScript                |
-                    | Responsive UI             |
-                    +-------------+-------------+
-                                  |
-                                  v
-                    +---------------------------+
-                    |     APPLICATION LAYER     |
-                    |                           |
-                    | Career Dashboard          |
-                    | AI Onboarding              |
-                    | Learning Dojo              |
-                    | World Map                  |
-                    | Mock Interviews            |
-                    | Opportunities              |
-                    +-------------+-------------+
-                                  |
-                     +------------+------------+
-                     |                         |
-                     v                         v
-          +---------------------+   +----------------------+
-          |    AI INTEGRATION   |   |   APPLICATION DATA   |
-          |                     |   |                      |
-          | Groq API            |   | Prisma ORM           |
-          | Llama 3.3 70B       |   | PostgreSQL           |
-          | Server API Routes   |   | User & Learning Data |
-          +---------------------+   +----------------------+
-                     |
-                     v
-          +---------------------+
-          |   AI CAPABILITIES   |
-          |                     |
-          | Question Generation |
-          | Career Profiling    |
-          | Adaptive Challenges |
-          | Error Explanation   |
-          | Roadmap Generation  |
-          | Interview Feedback  |
-          +---------------------+
+Generated roadmaps should be reviewed against the learner's experience, target role, and available time.
 
-          Additional Integrations
-          -----------------------
+<img src="https://img.shields.io/badge/04-ADAPTIVE_LEARNING-10B981?style=flat-square&labelColor=101522" alt="04 Adaptive Learning" />
 
-          Better Auth       -> Authentication
-          Adzuna            -> Job Search, if configured
-          Piston            -> Multi-language Code Execution
-          Turborepo         -> Monorepo Task Orchestration
-```
+<div align="center">
 
-### Architecture Responsibilities
+<img src="https://img.shields.io/badge/LEVEL_01-NOVICE-38BDF8?style=for-the-badge&labelColor=101522" alt="Novice" />
+<img src="https://img.shields.io/badge/LEVEL_02-APPRENTICE-8B5CF6?style=for-the-badge&labelColor=101522" alt="Apprentice" />
+<img src="https://img.shields.io/badge/LEVEL_03-SPECIALIST-10B981?style=for-the-badge&labelColor=101522" alt="Specialist" />
+<img src="https://img.shields.io/badge/LEVEL_04-MASTER-F59E0B?style=for-the-badge&labelColor=101522" alt="Master" />
 
-| Component          | Responsibility                                                                 |
-| ------------------ | ------------------------------------------------------------------------------ |
-| Next.js App Router | Routing, layouts, pages, and server-side capabilities                          |
-| React              | Interactive user interfaces                                                    |
-| TypeScript         | Type checking and maintainable application code                                |
-| AI Client          | Server-side communication with the Groq API                                    |
-| AI Modules         | Career profiling, question generation, and adaptive learning                   |
-| Prisma             | Database schema and data-access layer                                          |
-| PostgreSQL         | Persistent relational data                                                     |
-| Better Auth        | Authentication workflows                                                       |
-| Adzuna Integration | Job discovery when credentials and configuration are available                 |
-| Piston             | Execution of supported programming languages outside browser-native JavaScript |
-| Turborepo          | Monorepo task orchestration and build coordination                             |
+</div>
 
-### AI Request Flow
+LEARNER ACTION
 
-```text
-User Interaction
-       |
-       v
-Next.js Application
-       |
-       v
-Server-Side API Route
-       |
-       v
-Input Validation
-       |
-       v
-AI Client
-       |
-       v
-Groq Inference API
-       |
-       v
-Model Response
-       |
-       v
-Response Validation
-       |
-       v
-Application State Update
-       |
-       v
-Dynamic UI Rendering
-```
+SYSTEM RESPONSE
 
-**Implementation principle:** AI credentials must remain server-side. Model-generated responses should be validated before being used to update application state or persisted data.
+Correct answer
 
----
+Update performance and increase difficulty when appropriate
 
-# 10. Technology Stack
+Incorrect answer
 
-## Built With Modern Web Technologies
+Analyze the error and explain the underlying concept
 
-| Layer              | Technology                | Role                                  |
-| ------------------ | ------------------------- | ------------------------------------- |
-| Framework          | Next.js 15                | Full-stack React framework            |
-| Rendering & UI     | React 19                  | Component-driven interfaces           |
-| Language           | TypeScript                | Static typing                         |
-| Styling            | Vanilla CSS               | Custom design system                  |
-| Styling Utilities  | Tailwind CSS v4           | Utility-based styling                 |
-| Animation          | Framer Motion             | UI transitions and motion             |
-| AI Inference       | Groq API                  | Model inference                       |
-| AI Model           | Llama 3.3 70B Versatile   | Career and learning intelligence      |
-| Database           | PostgreSQL                | Relational persistence                |
-| ORM                | Prisma                    | Schema management and database access |
-| Authentication     | Better Auth               | Authentication and session management |
-| Monorepo           | Turborepo                 | Task orchestration                    |
-| Package Management | pnpm / npm                | Dependency management                 |
-| Job Data           | Adzuna API, if configured | Job and internship discovery          |
-| Code Execution     | Piston, if configured     | Multi-language execution              |
+Repeated misconception
 
-### Why This Stack?
+Provide targeted practice where supported
 
-**Next.js:** Supports integrated routing, server-side capabilities, and API endpoints.
+Retry completed
 
-**TypeScript:** Improves maintainability and catches many programming errors during development.
+Reassess understanding before continuing
 
-**Groq + Llama:** Enables AI-generated content, personalized assessments, and dynamic learning workflows.
+Milestone completed
 
-**PostgreSQL + Prisma:** Provides a structured foundation for user profiles, progress records, and application data.
+Update progress and unlock eligible content
 
-**Framer Motion:** Supports expressive interactions and transitions.
+Challenge Types
 
-**Turborepo:** Helps organize application code and shared packages as the project grows.
+Multiple Choice: Apply concepts to technical scenarios.
 
----
+Code Fill: Complete missing expressions or statements.
 
-# 11. Project Structure
+Bug Hunt: Identify faulty logic and select an appropriate correction.
 
-## Repository Overview
+Pseudocode Order: Arrange instructions in valid execution order.
 
-The following represents the documented application structure. Individual files and packages may vary with the repository's current implementation.
+Practice Lab: Run code using supported execution environments.
 
-```text
+<a id="architecture"></a>
+
+<img src="https://img.shields.io/badge/05-SYSTEM_ARCHITECTURE-8B5CF6?style=flat-square&labelColor=101522" alt="05 System Architecture" />
+
+<div align="center">
+
+flowchart TB
+    U([Learner]) --> UI[Next.js 15 App Router]
+    UI --> APP[CareerVerse Application Modules]
+
+    APP --> ON[AI Career Onboarding]
+    APP --> DOJO[Adaptive Learning Dojo]
+    APP --> MAP[Career World Map]
+    APP --> INT[Mock Interview Chamber]
+    APP --> JOB[Job & Internship Matcher]
+
+    ON --> API[Server-Side API Layer]
+    DOJO --> API
+    MAP --> API
+    INT --> API
+
+    API --> AI[Groq API · Llama 3.3 70B]
+    APP --> AUTH[Better Auth]
+    APP --> ORM[Prisma ORM]
+    ORM --> DB[(PostgreSQL)]
+
+    JOB --> EXT[Configured Job Data Provider]
+    DOJO --> PIS[Piston Engine · Optional]
+
+</div>
+
+Architecture Responsibilities
+
+COMPONENT
+
+RESPONSIBILITY
+
+Next.js App Router
+
+Routing, layouts, server-side capabilities
+
+React
+
+Interactive user interface
+
+TypeScript
+
+Type safety and maintainability
+
+AI client and API routes
+
+Server-side model requests and response handling
+
+AI modules
+
+Onboarding, challenge generation, explanations, and roadmaps
+
+Prisma
+
+Database access and schema management
+
+PostgreSQL
+
+Persistent relational data
+
+Better Auth
+
+Authentication and session workflows
+
+Adzuna integration
+
+Job discovery when configured
+
+Piston
+
+Execution of supported programming languages when enabled
+
+Turborepo
+
+Monorepo task orchestration
+
+AI Request Lifecycle
+
+USER ACTION
+    ↓
+SERVER-SIDE API ROUTE
+    ↓
+INPUT VALIDATION
+    ↓
+GROQ INFERENCE REQUEST
+    ↓
+MODEL RESPONSE
+    ↓
+RESPONSE / SCHEMA VALIDATION
+    ↓
+APPLICATION STATE UPDATE
+    ↓
+DYNAMIC UI RENDER
+
+<img src="https://img.shields.io/badge/06-TECHNOLOGY_STACK-00E5CC?style=flat-square&labelColor=101522" alt="06 Technology Stack" />
+
+<div align="center">
+
+LAYER
+
+TECHNOLOGY
+
+PURPOSE
+
+Framework
+
+Next.js 15
+
+Full-stack React application
+
+UI
+
+React 19
+
+Component-driven interface
+
+Language
+
+TypeScript
+
+Static typing
+
+Styling
+
+Vanilla CSS
+
+Custom design system
+
+Utility Styling
+
+Tailwind CSS v4
+
+Utility-based styling
+
+Animation
+
+Framer Motion
+
+Motion and transitions
+
+AI Provider
+
+Groq API
+
+Model inference
+
+AI Model
+
+Llama 3.3 70B Versatile
+
+Generative AI capabilities
+
+Database
+
+PostgreSQL
+
+Relational persistence
+
+ORM
+
+Prisma
+
+Database access
+
+Authentication
+
+Better Auth
+
+Authentication workflows
+
+Monorepo
+
+Turborepo
+
+Build and task orchestration
+
+Package Manager
+
+pnpm / npm
+
+Dependency management
+
+Job Search
+
+Adzuna API, optional
+
+Opportunity discovery
+
+Code Execution
+
+Piston, optional
+
+Multi-language execution
+
+</div>
+
+<img src="https://img.shields.io/badge/07-PROJECT_STRUCTURE-3B82F6?style=flat-square&labelColor=101522" alt="07 Project Structure" />
+
 CareerVerse/
-|
-+-- apps/
-|   |
-|   +-- web/
-|       |
-|       +-- app/
-|       |   |
-|       |   +-- (app)/
-|       |   |   |
-|       |   |   +-- dashboard/
-|       |   |   |   +-- page.tsx
-|       |   |   |
-|       |   |   +-- onboarding/
-|       |   |   |   +-- page.tsx
-|       |   |   |
-|       |   |   +-- world-map/
-|       |   |   |   +-- page.tsx
-|       |   |   |
-|       |   |   +-- worlds/
-|       |   |   |   +-- dojo/
-|       |   |   |
-|       |   |   +-- interview/
-|       |   |   |   +-- page.tsx
-|       |   |   |
-|       |   |   +-- opportunities/
-|       |   |       +-- page.tsx
-|       |   |
-|       |   +-- auth/
-|       |   |
-|       |   +-- api/
-|       |   |   +-- ai/
-|       |   |
-|       |   +-- page.tsx
-|       |   +-- globals.css
-|       |
-|       +-- lib/
-|       |   |
-|       |   +-- ai-client.ts
-|       |   +-- ai-onboarding.ts
-|       |   +-- ai-dojo.ts
-|       |   +-- game-context.tsx
-|       |   +-- clean-samurai.tsx
-|       |
-|       +-- prisma/
-|       |   +-- schema.prisma
-|       |
-|       +-- public/
-|       |
-|       +-- package.json
-|       +-- .env.example
-|       |
-|       +-- next.config.ts
-|
-+-- packages/
-|   +-- shared/
-|   +-- ui/
-|   +-- config/
-|
-+-- package.json
-+-- turbo.json
-+-- pnpm-workspace.yaml
-+-- README.md
-```
+├── apps/
+│   └── web/
+│       ├── app/
+│       │   ├── (app)/
+│       │   │   ├── dashboard/
+│       │   │   ├── onboarding/
+│       │   │   ├── world-map/
+│       │   │   ├── worlds/
+│       │   │   │   └── dojo/
+│       │   │   ├── interview/
+│       │   │   └── opportunities/
+│       │   ├── auth/
+│       │   ├── api/
+│       │   │   └── ai/
+│       │   ├── page.tsx
+│       │   └── globals.css
+│       ├── lib/
+│       │   ├── ai-client.ts
+│       │   ├── ai-onboarding.ts
+│       │   ├── ai-dojo.ts
+│       │   ├── game-context.tsx
+│       │   └── clean-samurai.tsx
+│       ├── prisma/
+│       │   └── schema.prisma
+│       ├── public/
+│       ├── package.json
+│       └── .env.example
+├── packages/
+├── package.json
+├── turbo.json
+├── pnpm-workspace.yaml
+└── README.md
 
-### Key Application Modules
+<sub>Illustrative repository structure. Confirm actual file paths, package names, and configuration against the project source.</sub>
 
-| File / Directory           | Purpose                                          |
-| -------------------------- | ------------------------------------------------ |
-| `app/(app)/dashboard/`     | Personalized dashboard                           |
-| `app/(app)/onboarding/`    | Dynamic career assessment                        |
-| `app/(app)/world-map/`     | Career domains and roadmap navigation            |
-| `app/(app)/worlds/dojo/`   | Adaptive technical challenges                    |
-| `app/(app)/interview/`     | Mock interview experience                        |
-| `app/(app)/opportunities/` | Job and internship discovery                     |
-| `app/api/ai/`              | Server-side AI API integration                   |
-| `lib/ai-client.ts`         | Groq inference client                            |
-| `lib/ai-onboarding.ts`     | Dynamic question generation and career profiling |
-| `lib/ai-dojo.ts`           | Challenge generation and adaptive retries        |
-| `lib/game-context.tsx`     | Learning state and capacity tracking             |
-| `lib/clean-samurai.tsx`    | Character-related canvas integration             |
-| `prisma/schema.prisma`     | Database schema, when Prisma is configured there |
-| `app/globals.css`          | Global styling and design tokens                 |
+<a id="setup"></a>
 
-The exact package layout, route handlers, database schema, and module names should be verified against the actual repository.
+<img src="https://img.shields.io/badge/08-GETTING_STARTED-10B981?style=flat-square&labelColor=101522" alt="08 Getting Started" />
 
----
+Prerequisites
 
-# 12. Get Started
+Node.js 20 or newer.
 
-## Run CareerVerse Locally
+npm or pnpm.
 
-### Prerequisites
+Git.
 
-Install the following tools before starting:
+Groq API credentials.
 
-* Node.js 20 or newer.
-* npm or pnpm.
-* Git.
-* A Groq API key.
-* PostgreSQL, if required by the configured database schema.
-* Docker, if using the containerized Practice Lab engine.
+PostgreSQL if required by the configured schema.
 
-Check your installed versions:
+Docker if using the containerized Practice Lab engine.
 
-```bash
-node --version
-npm --version
-git --version
-```
+01 · Clone the repository
 
-### Step 1 — Clone the Repository
-
-Replace the placeholder with the actual repository address.
-
-```bash
 git clone <YOUR_REPOSITORY_URL>
 cd CareerVerse
-```
 
-If you already have the project files, open a terminal in the repository root.
+02 · Install dependencies
 
-### Step 2 — Install Dependencies
+Use the package manager configured for the repository.
 
-Use the package manager supported by the repository.
-
-**npm:**
-
-```bash
 npm install
-```
 
-**pnpm:**
+Or:
 
-```bash
 pnpm install
-```
 
-If the project defines workspace-specific installation instructions, follow those instead.
+03 · Configure environment variables
 
-### Step 3 — Configure Environment Variables
-
-Create the application's local environment file.
-
-```bash
 cd apps/web
-```
 
-Create `.env.local` and configure the variables required by the application.
+Create .env.local and set the variables required by your configuration.
 
-```env
-# AI Configuration
+# AI provider — keep server-side
 GROQ_API_KEY="your_groq_api_key"
 
-# Database
+# PostgreSQL — if database features are enabled
 DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/careerverse"
 
-# Job Search Integration
+# Optional job-search provider
 NEXT_PUBLIC_ADZUNA_APP_ID="your_adzuna_app_id"
 NEXT_PUBLIC_ADZUNA_APP_KEY="your_adzuna_app_key"
 
-# Optional Practice Lab Engine
+# Optional Piston engine
 PISTON_URL="http://localhost:2000"
-```
 
-**Configuration notes:**
+Security: Never commit real API keys or database passwords. NEXT_PUBLIC_ variables may be included in browser bundles; private credentials must not use this prefix.
 
-* Obtain your Groq API key from the official Groq platform.
-* Configure `DATABASE_URL` to match your PostgreSQL installation.
-* Set job-search credentials only when the integration is enabled.
-* `PISTON_URL` is needed when the Practice Lab is configured to use a Piston engine.
-* Remove unused variables from your local configuration.
-* Never commit real API keys, database passwords, or other secrets.
+04 · Prepare Prisma
 
-A variable prefixed with `NEXT_PUBLIC_` can be exposed to the browser. Do not use that prefix for secrets that must remain private.
+If Prisma is configured and migration files already exist:
 
-For a production application, consider keeping all provider credentials server-side and exposing only the minimum information required by the client.
-
-### Step 4 — Configure the Database
-
-If the repository uses Prisma and the configured database schema is ready, run the appropriate migration workflow.
-
-For an existing migration history:
-
-```bash
 npx prisma migrate deploy
-```
-
-For local development, when creating and applying a new migration is necessary:
-
-```bash
-npx prisma migrate dev
-```
-
-Generate the Prisma client if your setup requires it:
-
-```bash
 npx prisma generate
-```
 
-Run these commands from the directory containing the relevant Prisma configuration and schema.
+For local development when creating a migration is appropriate:
 
-**Note:** The actual migration command depends on the repository's Prisma version, schema location, and migration history. Do not run development migrations against a production database without reviewing the implications.
+npx prisma migrate dev
 
-### Step 5 — Start the Development Server
+Run commands from the directory containing the applicable Prisma configuration. Review the schema and migration history first.
 
-From `apps/web`, run:
+05 · Run the application
 
-```bash
+From apps/web:
+
 npm run dev
-```
 
-Or, if using pnpm:
+Or:
 
-```bash
 pnpm dev
-```
 
-Open the application:
+Open http://localhost:3000.
 
-```text
-http://localhost:3000
-```
+06 · Start the optional Practice Lab engine
 
-### Step 6 — Start the Practice Lab Engine (Optional)
+If the repository includes the required script and container configuration:
 
-If the repository defines the `engine:up` script and includes its required container configuration, start the Piston engine:
-
-```bash
 npm run engine:up
-```
 
-The engine is expected to be available at:
+The default example endpoint is http://localhost:2000. Configure PISTON_URL if the engine runs elsewhere.
 
-```text
-http://localhost:2000
-```
+07 · Verify the main workflows
 
-The first execution of a language may require downloading its runtime, depending on the engine configuration.
+Landing page and navigation render correctly.
 
-JavaScript browser execution does not require this external engine.
+Authentication works when configured.
 
-### Step 7 — Verify the Application
+Onboarding questions load.
 
-Use the following checklist to validate your local setup.
+AI requests use the server-side integration.
 
-* [ ] The application starts without build errors.
-* [ ] The landing page renders.
-* [ ] Authentication works when configured.
-* [ ] Onboarding questions load.
-* [ ] AI requests reach the server-side integration.
-* [ ] Career recommendations can be generated.
-* [ ] Learning challenges render and accept answers.
-* [ ] Adaptive retry behavior works.
-* [ ] Roadmap progression reflects completion state.
-* [ ] Mock interview evaluation works.
-* [ ] Opportunity discovery works when its provider is configured.
-* [ ] Database-backed features persist data correctly.
-* [ ] Code execution works for supported languages when the engine is enabled.
+Challenges accept and evaluate answers.
 
----
+Incorrect answers trigger the configured retry flow.
 
-# 13. Environment & Security
+Roadmap progression updates correctly.
 
-## Protect the Platform and Its Users
+Interview feedback is generated.
 
-CareerVerse integrates AI services, authentication, persistent user data, and potentially external code execution. These integrations require careful security boundaries.
+Opportunity discovery works when configured.
 
-### API Key Protection
+Database-backed data persists correctly.
 
-Keep provider credentials in server-side environment variables.
+Supported code-execution workflows run as expected.
 
-```text
-Browser
-   |
-   | User request
-   v
-Next.js Server Route
-   |
-   | Private API key
-   v
-AI Provider
-```
+<img src="https://img.shields.io/badge/09-DESIGN_SYSTEM-8B5CF6?style=flat-square&labelColor=101522" alt="09 Design System" />
 
-Never embed a private API key directly in frontend components, client-side JavaScript, committed configuration files, or public repositories.
+<div align="center">
 
-### Input Validation
+COLOR
 
-Validate user input before passing it to AI providers or storing it in the database.
+HEX
 
-Recommended checks include:
+ROLE
 
-* Request size limits.
-* Required fields.
-* Valid data types.
-* Allowed values.
-* Rate limits.
-* Authentication and authorization.
-* Appropriate error handling.
+<img src="https://img.shields.io/badge/TEAL-00E5CC?style=flat-square" alt="Teal" />
 
-### AI Response Validation
+#00E5CC
 
-Treat model output as untrusted input.
+Primary actions and highlights
 
-* Validate response schemas.
-* Handle malformed or incomplete responses.
-* Enforce reasonable output limits.
-* Avoid executing generated code automatically.
-* Prevent model responses from bypassing application authorization.
-* Provide sensible fallback behavior when an AI provider is unavailable.
+<img src="https://img.shields.io/badge/PURPLE-8B5CF6?style=flat-square" alt="Purple" />
 
-### Code Execution Isolation
+#8B5CF6
 
-A multi-language execution engine should not be treated as safe merely because it runs locally.
+AI features and secondary accents
 
-For production deployments, evaluate:
+<img src="https://img.shields.io/badge/EMERALD-10B981?style=flat-square" alt="Emerald" />
 
-* Container isolation.
-* CPU and memory limits.
-* Execution timeouts.
-* Network restrictions.
-* Filesystem restrictions.
-* Process isolation.
-* Abuse prevention.
-* Output size limits.
+#10B981
 
-### Data Protection
+Success and completion
 
-Protect authentication credentials, learner profiles, progress records, and interview responses.
+<img src="https://img.shields.io/badge/AMBER-F59E0B?style=flat-square" alt="Amber" />
 
-Use appropriate access controls, secure session handling, database permissions, and data-retention policies.
+#F59E0B
 
----
+Progress and attention
 
-# 14. Academic Project Significance
+<img src="https://img.shields.io/badge/ROSE-F43F5E?style=flat-square" alt="Rose" />
 
-## Problem Statement
+#F43F5E
 
-Engineering students and beginners entering the IT industry frequently face uncertainty when selecting a career domain, identifying relevant skills, organizing learning resources, and evaluating their readiness for entry-level opportunities.
+Errors and alerts
 
-Conventional learning platforms may offer educational content without integrating personalized career discovery, adaptive practice, structured progress tracking, interview preparation, and job matching into one workflow.
+<img src="https://img.shields.io/badge/BLUE-3B82F6?style=flat-square" alt="Blue" />
 
-CareerVerse addresses this challenge by proposing an integrated AI-driven platform that connects career exploration with adaptive learning and practical career preparation.
+#3B82F6
 
-## Proposed Solution
+Information and secondary actions
 
-The system combines:
+<img src="https://img.shields.io/badge/BACKGROUND-080B14?style=flat-square" alt="Background" />
 
-1. AI-generated career assessment.
-2. Personalized IT domain recommendations.
-3. Adaptive technical challenge generation.
-4. Mistake analysis and simplified retries.
-5. Structured career roadmaps.
-6. AI-assisted mock interview evaluation.
-7. Job and internship discovery.
-8. Learner progress tracking.
+#080B14
 
-## Project Objectives
+Main background
 
-* Develop a personalized IT career exploration platform.
-* Use AI to generate contextual onboarding questions.
-* Adapt technical practice to learner performance.
-* Provide explanations and targeted retries after mistakes.
-* Organize career preparation through structured learning paths.
-* Support interview practice with AI-generated feedback.
-* Connect learner skills with relevant job opportunities.
-* Deliver a consistent, interactive, responsive user experience.
+<img src="https://img.shields.io/badge/SURFACE-111827?style=flat-square" alt="Surface" />
 
-## Expected Outcomes
+#111827
 
-The intended outcomes include:
+Cards and panels
 
-* More structured career exploration.
-* Better visibility into relevant skill gaps.
-* Personalized learning recommendations.
-* More interactive technical practice.
-* Accessible interview preparation.
-* Improved understanding of entry-level role requirements.
+</div>
 
-These are project objectives and expected benefits, not experimentally established results. Actual effectiveness should be evaluated through testing and user feedback.
+Design principles: clear typography, consistent spacing, responsive layouts, accessible contrast, purposeful animation, and meaningful feedback for user actions.
 
-## Potential Evaluation Metrics
+<img src="https://img.shields.io/badge/10-SECURITY_&_RELIABILITY-F43F5E?style=flat-square&labelColor=101522" alt="10 Security and Reliability" />
 
-| Category            | Example Metric                         |
-| ------------------- | -------------------------------------- |
-| Onboarding          | Assessment completion rate             |
-| AI Quality          | Relevance of generated questions       |
-| Learning            | Challenge completion rate              |
-| Adaptivity          | Appropriate difficulty changes         |
-| Retry Effectiveness | Improvement on repeated concepts       |
-| Roadmaps            | Milestone completion rate              |
-| Interviews          | Agreement with human evaluators        |
-| Matching            | Relevance of recommended opportunities |
-| Performance         | API response time and error rate       |
-| Usability           | Task completion and user satisfaction  |
+Keep private API credentials server-side.
 
----
+Validate user input and model-generated responses.
 
-# 15. Project Roadmap
+Apply authentication, authorization, and rate limits to protected routes.
 
-## From Functional Prototype to Career Intelligence Platform
+Handle provider errors, timeouts, and malformed output.
 
-The following roadmap represents potential future improvements, not a statement that every feature has already been implemented.
+Do not execute generated code without appropriate isolation.
 
-### Phase 01 — Core Experience
+Apply CPU, memory, time, filesystem, and network restrictions to code execution.
 
-* [x] Career discovery concept.
-* [x] AI-driven learning concept.
-* [x] Multi-domain career model.
-* [x] Adaptive practice concept.
-* [x] Career roadmap concept.
-* [x] Mock interview concept.
-* [x] Job matching concept.
+Protect learner profiles, progress records, and interview responses.
 
-### Phase 02 — Learning Intelligence
+Review third-party provider terms and data-retention requirements.
 
-* [ ] More precise skill-level estimation.
-* [ ] Improved concept-level knowledge tracking.
-* [ ] Long-term learner performance analysis.
-* [ ] Better identification of recurring misconceptions.
-* [ ] Personalized spaced-repetition scheduling.
-* [ ] More comprehensive assessment validation.
+<img src="https://img.shields.io/badge/11-ACADEMIC_PROJECT-3B82F6?style=flat-square&labelColor=101522" alt="11 Academic Project" />
 
-### Phase 03 — Career Readiness
+Problem Statement
 
-* [ ] Portfolio project recommendations.
-* [ ] Resume feedback.
-* [ ] Role-specific skill matrices.
-* [ ] Expanded interview question banks.
-* [ ] Project-based assessments.
-* [ ] More transparent opportunity matching.
+Engineering students and IT beginners often struggle to select a career direction, identify role-specific skills, organize their learning, evaluate technical ability, and prepare for entry-level opportunities.
 
-### Phase 04 — Platform Expansion
+CareerVerse proposes an integrated AI-assisted platform that connects career discovery, adaptive technical practice, structured roadmaps, interview preparation, and opportunity exploration.
 
-* [ ] Additional programming languages.
-* [ ] Richer analytics dashboard.
-* [ ] Improved accessibility.
-* [ ] Optional collaborative learning.
-* [ ] Additional job data providers.
-* [ ] Deployment and scalability improvements.
+Objectives
 
-### Phase 05 — Evaluation & Research
+Generate contextual career-assessment questions.
 
-* [ ] Structured usability testing.
-* [ ] Learning outcome evaluation.
-* [ ] AI response quality assessment.
-* [ ] Recommendation relevance analysis.
-* [ ] Security testing.
-* [ ] Performance benchmarking.
+Recommend relevant IT domains and learning paths.
 
----
+Adapt challenge difficulty to learner performance.
 
-# 16. Contributing
+Explain mistakes and support targeted retries.
 
-## Help Improve CareerVerse
+Track progress through learning milestones.
 
-Contributions can improve the platform's learning experience, technical reliability, and maintainability.
+Provide structured mock interview feedback.
 
-### Suggested Contribution Areas
+Connect skills with relevant job and internship listings.
 
-* Frontend and accessibility improvements.
-* AI prompt and response-schema improvements.
-* New challenge formats.
-* Career roadmap content.
-* Interview evaluation quality.
-* Database and API optimization.
-* Test coverage.
-* Security improvements.
-* Documentation.
+Suggested Evaluation Metrics
 
-### Contribution Workflow
+AREA
 
-```bash
-# Fork the repository on your hosting platform.
+METRIC
 
-# Clone your fork.
-git clone <YOUR_FORK_URL>
+Onboarding
 
-# Enter the project directory.
-cd CareerVerse
+Completion rate and question relevance
 
-# Create a feature branch.
+Learning
+
+Challenge completion and retry success
+
+Adaptivity
+
+Appropriate difficulty adjustments
+
+Roadmaps
+
+Milestone completion rate
+
+Interviews
+
+Agreement with human evaluators
+
+Matching
+
+Relevance of recommended opportunities
+
+Performance
+
+Response time and error rate
+
+Usability
+
+Task completion and learner feedback
+
+These are proposed evaluation metrics, not claims of experimentally verified outcomes.
+
+<img src="https://img.shields.io/badge/12-ROADMAP-F59E0B?style=flat-square&labelColor=101522" alt="12 Roadmap" />
+
+Define the career discovery and adaptive learning experience.
+
+Specify eight IT career domains.
+
+Design challenge and retry workflows.
+
+Define roadmap, interview, and opportunity modules.
+
+Expand concept-level knowledge tracking.
+
+Introduce spaced-repetition learning schedules.
+
+Improve AI assessment and recommendation validation.
+
+Expand project-based learning guidance.
+
+Improve analytics, accessibility, and automated testing.
+
+Evaluate learning outcomes and recommendation quality.
+
+<sub>Roadmap items describe project scope and planned improvements. Verify implementation status against the current codebase.</sub>
+
+<img src="https://img.shields.io/badge/13-CONTRIBUTING-00E5CC?style=flat-square&labelColor=101522" alt="13 Contributing" />
+
+Contributions that improve accessibility, technical reliability, learning quality, security, or documentation are welcome.
+
 git checkout -b feature/your-feature-name
-
-# Install dependencies.
-npm install
-
-# Implement and test your changes.
-
-# Commit your work.
 git add .
 git commit -m "feat: describe your change"
-
-# Push your branch.
 git push origin feature/your-feature-name
 
-# Open a pull request.
-```
+Open a pull request and follow the repository's contribution guidelines.
 
-Follow the repository's contribution guidelines if they define additional requirements.
+<img src="https://img.shields.io/badge/14-LICENSE-10B981?style=flat-square&labelColor=101522" alt="14 License" />
 
----
-
-# 17. License
-
-## MIT License
-
-CareerVerse is intended to be distributed under the MIT License for academic major-project development.
-
-Before publishing or redistributing the repository, ensure that the root `LICENSE` file contains the complete MIT License text and that third-party assets, libraries, models, and integrations comply with their respective licenses and terms.
-
----
-
-# 18. Final Overview
+CareerVerse is intended for distribution under the MIT License as an academic major project. Include the complete license text in the repository's LICENSE file and verify third-party license requirements before redistribution.
 
 <div align="center">
 
-## YOUR CAREER IS NOT A GUESS. IT IS A JOURNEY.
+<img width="100%" src="https://capsule-render.vercel.app/api?type=waving&section=footer&height=170&color=0:00E5CC,45:5B21B6,100:080B14&text=BUILD%20YOUR%20FUTURE&fontColor=FFFFFF&fontSize=30&fontAlignY=48" alt="Build your future" />
 
-**CareerVerse brings career discovery, adaptive learning, technical practice, interview preparation, and opportunity exploration into one connected platform.**
+<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=17&duration=2500&pause=800&color=00E5CC&center=true&vCenter=true&width=750&lines=DISCOVER+YOUR+DIRECTION;DEVELOP+YOUR+POTENTIAL;MAKE+YOUR+NEXT+MOVE" alt="CareerVerse closing message" />
 
-<br/>
+CAREERVERSE
 
-```text
-DISCOVER YOUR STRENGTHS
-          |
-          v
-EXPLORE YOUR CAREER
-          |
-          v
-LEARN THE RIGHT SKILLS
-          |
-          v
-PRACTICE WITH AI
-          |
-          v
-MEASURE YOUR PROGRESS
-          |
-          v
-PREPARE FOR INTERVIEWS
-          |
-          v
-EXPLORE REAL OPPORTUNITIES
-```
-
-<br/>
-
-<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=600&size=19&duration=2800&pause=1000&color=00E5CC&center=true&vCenter=true&width=750&lines=One+Learner.+One+Goal.+A+Personalized+Path.;Learn+Smarter.+Practice+Deeper.+Move+Forward.;Welcome+to+CareerVerse." alt="CareerVerse closing animation" />
-
-<br/>
-
-**CAREERVERSE**
-
-*Discover your direction. Develop your potential. Build your future.*
-
-<br/>
-
-<sub>Developed as an Academic Major Project | AI-Powered IT Career Exploration & Adaptive Learning Platform</sub>
+<sub>AI-Powered IT Career Exploration · Adaptive Learning · Job Readiness</sub>
 
 </div>
-
----
-
-<div align="center">
-
-**CareerVerse | README.md**
-
-*Documentation for the CareerVerse project.*
-
-</div>
-```
