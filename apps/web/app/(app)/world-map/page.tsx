@@ -7,7 +7,7 @@ import { useGame } from "@/lib/game-context";
 import { chatWithGroq } from "@/lib/ai-client";
 import { matchRealmId } from "@/lib/realm-match";
 import { gsap, useGSAP, prefersReducedMotion } from "@/lib/gsap";
-import { Swords, AlertTriangle, Sparkles, X, Hexagon, Coins, Check, Zap, Lock, Wand2, Diamond, Circle } from "lucide-react";
+import { Swords, AlertTriangle, Sparkles, X, Hexagon, Coins, Check, Zap, Lock, Wand2, Diamond, Circle, Star, Trash2 } from "lucide-react";
 
 /* Tiny blur-up placeholder: instant terrain paint while the webp loads (2.3MB png → 105KB webp) */
 const TERRAIN_BLUR = "data:image/jpeg;base64,/9j/2wBDABQODxIPDRQSEBIXFRQYHjIhHhwcHj0sLiQySUBMS0dARkVQWnNiUFVtVkVGZIhlbXd7gYKBTmCNl4x9lnN+gXz/2wBDARUXFx4aHjshITt8U0ZTfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHz/wAARCAASABgDASIAAhEBAxEB/8QAFwABAQEBAAAAAAAAAAAAAAAAAAMCBv/EAB0QAAICAgMBAAAAAAAAAAAAAAABAhEDMSEiQRL/xAAWAQEBAQAAAAAAAAAAAAAAAAAAAQL/xAAVEQEBAAAAAAAAAAAAAAAAAAAAEf/aAAwDAQACEQMRAD8A5qGNTl2aSKyxfEaVNEHkuqS4Kqakl4VmJdW9Uwam41xQCxCPppaAAy9gAD//2Q==";
@@ -40,6 +40,8 @@ interface DomainRealm {
   narrativeIntro: string;
   missions: MissionNode[];
   isAiGenerated?: boolean;
+  /** user-starred path — pinned to the top of the switcher */
+  favorite?: boolean;
 }
 
 const defaultIcons: Record<string, string> = {
@@ -199,8 +201,9 @@ function typeLabel(type: string) {
 export default function DynamicWorldMapPage() {
   const { player, completeMission, addCoins, sfx } = useGame();
   const [mounted, setMounted] = useState(false);
-  const [realms, setRealms] = useState<DomainRealm[]>(initialDomainRealms);
-  const [activeDomainId, setActiveDomainId] = useState("backend");
+  const [realms, setRealms] = useState<DomainRealm[]>([]);
+  const [realmsHydrated, setRealmsHydrated] = useState(false);
+  const [activeDomainId, setActiveDomainId] = useState("");
   /** recommendation with no built-in realm — shown as an honest banner, not silently mapped */
   const [noMatchDomain, setNoMatchDomain] = useState<string | null>(null);
   const [selected, setSelected] = useState<MissionNode | null>(null);
@@ -208,6 +211,52 @@ export default function DynamicWorldMapPage() {
   const [showAiModal, setShowAiModal] = useState(false);
   const [customGoal, setCustomGoal] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+
+  /* Paths are user-owned: a NEW user starts with an EMPTY list and forges
+     whatever path they actually want. Saved lists hydrate back in and every
+     change (create / delete / favorite) persists to localStorage. */
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("cv_world_realms");
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (Array.isArray(saved)) setRealms(saved);
+      }
+    } catch {
+      /* corrupt payload → start fresh, still empty */
+    }
+    setRealmsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!realmsHydrated) return;
+    try {
+      localStorage.setItem("cv_world_realms", JSON.stringify(realms));
+    } catch {
+      /* storage full/blocked — state still works for this session */
+    }
+  }, [realms, realmsHydrated]);
+
+  /* Keep the active selection pointing at a realm that still exists */
+  useEffect(() => {
+    if (!realmsHydrated || realms.length === 0) return;
+    if (!realms.some((r) => r.id === activeDomainId)) {
+      setActiveDomainId((realms.find((r) => r.favorite) || realms[0]).id);
+    }
+  }, [realmsHydrated, realms, activeDomainId]);
+
+  function toggleFavorite(id: string) {
+    sfx("click");
+    setRealms((prev) => prev.map((r) => (r.id === id ? { ...r, favorite: !r.favorite } : r)));
+  }
+
+  function deleteRealm(id: string) {
+    sfx("click");
+    const next = realms.filter((r) => r.id !== id);
+    setRealms(next);
+    if (id === activeDomainId) setActiveDomainId(next[0]?.id ?? "");
+    if (selected?.id === id) setSelected(null);
+  }
 
   /** GSAP scope — node entrances, ink-path draw-on, terrain parallax */
   const mapRef = useRef<HTMLDivElement>(null);
@@ -247,6 +296,21 @@ export default function DynamicWorldMapPage() {
   }, [player.recommendedDomain, player.realmName, realms]);
 
   const activeRealm = realms.find((r) => r.id === activeDomainId) || realms[0];
+
+  /** favourites pin to the top of the realm switcher */
+  const orderedRealms = useMemo(
+    () => [...realms].sort((a, b) => Number(!!b.favorite) - Number(!!a.favorite)),
+    [realms]
+  );
+
+  /** built-in starter matching the onboarding recommendation — offered as a
+      one-click ADD in the empty state, never pre-populated */
+  const starterTemplate = useMemo(() => {
+    const rec = player.recommendedDomain || player.realmName || "";
+    if (!rec.trim()) return null;
+    const id = matchRealmId(rec, initialDomainRealms);
+    return id ? initialDomainRealms.find((r) => r.id === id) ?? null : null;
+  }, [player.recommendedDomain, player.realmName]);
 
   /* ═══════ GSAP: ink-path draw-on, node stagger, terrain parallax ═══════
      Runs only on the client; auto-reverts on unmount. Re-runs whenever
@@ -336,8 +400,9 @@ export default function DynamicWorldMapPage() {
   // Dynamic Level Unlocking Logic
   const liveMissions = useMemo(() => {
     const completed = new Set(player.completedMissions);
+    const missions = activeRealm?.missions ?? [];
 
-    return activeRealm.missions.map((m, idx) => {
+    return missions.map((m, idx) => {
       const iconUrl = defaultIcons[m.iconKey] || "";
 
       if (completed.has(m.id)) {
@@ -347,7 +412,7 @@ export default function DynamicWorldMapPage() {
       // Node is active if:
       // 1. It is the starting level (idx === 0)
       // 2. OR any prerequisite connected to it is completed
-      const isPrereqCompleted = activeRealm.missions.some(
+      const isPrereqCompleted = missions.some(
         (prev) => prev.connections.includes(m.id) && completed.has(prev.id)
       );
 
@@ -357,7 +422,7 @@ export default function DynamicWorldMapPage() {
 
       return { ...m, status: "locked" as const, iconUrl };
     });
-  }, [activeRealm.missions, player.completedMissions]);
+  }, [activeRealm?.missions, player.completedMissions]);
 
   const filteredMissions = liveMissions.filter((m) =>
     m.title.toLowerCase().includes(filterQuery.toLowerCase()) ||
@@ -367,6 +432,29 @@ export default function DynamicWorldMapPage() {
   const completedCount = liveMissions.filter((m) => m.status === "completed").length;
   const totalCount = liveMissions.length;
   const progressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  /* Animated count-up on the progress readout */
+  const progressCountRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const el = progressCountRef.current;
+    if (!el) return;
+    if (prefersReducedMotion()) {
+      el.textContent = String(completedCount);
+      return;
+    }
+    const obj = { v: Number(el.textContent) || 0 };
+    const tw = gsap.to(obj, {
+      v: completedCount,
+      duration: 0.7,
+      ease: "power2.out",
+      onUpdate: () => {
+        el.textContent = String(Math.round(obj.v));
+      },
+    });
+    return () => {
+      tw.kill();
+    };
+  }, [completedCount]);
 
   // AI Dynamic Custom Roadmap Generator
   async function handleGenerateAiRoadmap(e: React.FormEvent) {
@@ -413,6 +501,7 @@ Return ONLY a valid JSON object:
 
       setRealms((prev) => [...prev, aiRealm]);
       setActiveDomainId(newDomainId);
+      setNoMatchDomain(null);
       setShowAiModal(false);
       setCustomGoal("");
     } catch (err) {
@@ -449,19 +538,55 @@ Return ONLY a valid JSON object:
             </button>
           </div>
           <div className="flex flex-col gap-1.5">
-            {realms.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => { setActiveDomainId(r.id); setSelected(null); }}
-                className={`py-1.5 px-2.5 rounded-lg text-xs font-medium tracking-wider text-left transition-all ${
-                  activeDomainId === r.id
-                    ? "bg-[#06b6d4]/15 text-[#22d3ee] border border-[#06b6d4]/40 font-semibold"
-                    : "surface text-[#6b6358] hover:text-[#c8c0b0]"
-                }`}
-              >
-                {r.name.replace("Operation: ", "")}
-              </button>
-            ))}
+            {orderedRealms.length === 0 && (
+              <p className="text-[11px] text-[#6b6358] leading-relaxed surface rounded-lg px-3 py-3">
+                No paths yet — forge your first learning path with the AI Generator above.
+              </p>
+            )}
+            {orderedRealms.map((r) => {
+              const isActive = activeDomainId === r.id;
+              return (
+                <div
+                  key={r.id}
+                  className={`flex items-center gap-0.5 rounded-lg transition-all ${
+                    isActive
+                      ? "bg-[#06b6d4]/15 border border-[#06b6d4]/40"
+                      : "surface border border-transparent"
+                  }`}
+                >
+                  <button
+                    onClick={() => { setActiveDomainId(r.id); setSelected(null); sfx("click"); }}
+                    className={`flex-1 min-w-0 py-1.5 px-2.5 text-xs font-medium tracking-wider text-left truncate ${
+                      isActive ? "text-[#22d3ee] font-semibold" : "text-[#6b6358] hover:text-[#c8c0b0]"
+                    }`}
+                    title={r.name}
+                  >
+                    {r.favorite && (
+                      <Star className="w-3 h-3 inline mr-1 -mt-0.5 text-[#fbbf24]" strokeWidth={2} fill="currentColor" />
+                    )}
+                    {r.name.replace("Operation: ", "")}
+                  </button>
+                  <button
+                    onClick={() => toggleFavorite(r.id)}
+                    aria-label={r.favorite ? "Unpin path" : "Pin path"}
+                    title={r.favorite ? "Remove from favourites" : "Mark as favourite"}
+                    className={`p-1.5 transition-colors shrink-0 ${
+                      r.favorite ? "text-[#fbbf24]" : "text-[#3d3830] hover:text-[#fbbf24]"
+                    }`}
+                  >
+                    <Star className="w-3.5 h-3.5" strokeWidth={2} fill={r.favorite ? "currentColor" : "none"} />
+                  </button>
+                  <button
+                    onClick={() => deleteRealm(r.id)}
+                    aria-label="Delete path"
+                    title="Delete this path"
+                    className="p-1.5 text-[#3d3830] hover:text-[#fb7185] transition-colors shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       </aside>
@@ -489,42 +614,54 @@ Return ONLY a valid JSON object:
           />
         </div>
 
-        {/* ══════ DOMAIN PROGRESS — floating top-center overlay ══════ */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
-          <div className="pointer-events-auto flex items-center gap-4 px-5 py-2.5 rounded-full bg-[#060709]/90 border border-[#2a2520]/60 backdrop-blur-md shadow-[0_8px_30px_rgba(0,0,0,0.6)]">
-            <div className="text-left">
-              <p className="font-mono text-[9px] text-[#6b6358] uppercase tracking-[0.2em] leading-none mb-1">
-                Domain Progress
-              </p>
-              <div className="flex items-baseline gap-1.5">
-                <span className="font-mono text-sm font-bold text-[#34d399] leading-none">
-                  {completedCount}
-                </span>
-                <span className="font-mono text-[10px] text-[#6b6358] leading-none">
-                  / {totalCount} levels
-                </span>
-                <span className="font-mono text-[10px] text-[#3d3830] leading-none">
-                  ({progressPct}%)
-                </span>
+        {/* ══════ DOMAIN PROGRESS — wide single-line overlay, sword rides the fill ══════ */}
+        {activeRealm && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
+            <div className="pointer-events-auto flex items-center gap-4 md:gap-6 px-5 md:px-7 py-3 rounded-2xl bg-[#060709]/92 border border-[#2a2520]/60 backdrop-blur-md shadow-[0_8px_30px_rgba(0,0,0,0.6)] w-[min(660px,calc(100vw-2rem))]">
+              <div className="shrink-0">
+                <p className="font-mono text-[9px] text-[#6b6358] uppercase tracking-[0.2em] leading-none mb-1.5">
+                  Domain Progress
+                </p>
+                <p className="font-mono text-sm text-[#e8dfc8] whitespace-nowrap leading-none">
+                  <span ref={progressCountRef} className="font-bold text-[#34d399]">
+                    {completedCount}
+                  </span>
+                  <span className="text-[#6b6358]"> / {totalCount} levels</span>
+                  <span className="text-[#3d3830]"> · {progressPct}%</span>
+                </p>
               </div>
-            </div>
-            <div className="w-32 lg:w-44">
-              <div className="xp-track h-1.5 rounded-full">
-                <div
-                  className="xp-fill-emerald rounded-full transition-[width] duration-700 ease-out"
-                  style={{ width: `${progressPct}%` }}
-                />
+
+              <div className="flex-1 min-w-0">
+                <div className="relative">
+                  <div className="xp-track h-2 rounded-full">
+                    <div
+                      className="xp-fill-emerald h-2 rounded-full transition-[width] duration-700 ease-out shadow-[0_0_10px_rgba(16,185,129,0.45)]"
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
+                  {/* Sword rides the leading edge of the fill */}
+                  <span
+                    className="absolute top-1/2 pointer-events-none transition-[left] duration-700 ease-out"
+                    style={{ left: `${progressPct}%`, transform: "translate(-50%,-50%)" }}
+                  >
+                    <Swords
+                      className="w-4 h-4 text-[#e8dfc8] animate-pulse drop-shadow-[0_0_6px_rgba(52,211,153,0.85)]"
+                      strokeWidth={2}
+                    />
+                  </span>
+                </div>
               </div>
-              <p className="font-mono text-[9px] text-[#3d3830] mt-1 text-right truncate max-w-full">
+
+              <p className="font-mono text-[9px] text-[#3d3830] shrink-0 max-w-[130px] truncate">
                 {activeRealm.name.replace("Operation: ", "")}
               </p>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Connecting SVG lines */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
-          {activeRealm.missions.map((m) =>
+          {activeRealm?.missions.map((m) =>
             m.connections.map((targetId) => {
               const target = activeRealm.missions.find((n) => n.id === targetId);
               if (!target) return null;
@@ -591,7 +728,68 @@ Return ONLY a valid JSON object:
       {/* ══════ RIGHT PANEL — Domain Details (or Mission Detail when selected) ══════ */}
       <aside className="lg:w-72 flex-shrink-0 border-t lg:border-t-0 lg:border-l border-[#2a2520]/40 p-5 space-y-4 bg-[#060709]/70 backdrop-blur-md lg:h-full lg:overflow-y-auto z-30">
         <AnimatePresence mode="wait">
-          {selected ? (
+          {!activeRealm ? (
+            /* ── Empty state: brand-new user, no paths yet ── */
+            <motion.div
+              key="no-paths"
+              initial={{ opacity: 0, x: -16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -16 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-4"
+            >
+              <div className="space-y-2">
+                <span className="text-[10px] font-mono text-[#06b6d4] uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-[#06b6d4]/30 bg-[#06b6d4]/10 inline-block">
+                  Your Paths
+                </span>
+                <h2 className="font-cinzel text-xl font-bold text-[#e8dfc8] tracking-wider leading-tight">
+                  No learning paths yet
+                </h2>
+                <p className="text-xs text-[#6b6358] leading-relaxed">
+                  You are in control — forge a custom roadmap for any IT goal, then favourite or delete paths as your journey changes.
+                </p>
+              </div>
+
+              <div className="dialogue-box-teal rounded-xl px-4 py-3.5">
+                <p className="text-xs text-[#9a9182] leading-relaxed">
+                  {noMatchDomain
+                    ? <>We don't have a ready-made path for <strong className="text-[#e8dfc8]">{noMatchDomain}</strong> — forge it below.</>
+                    : "Enter any IT domain or career goal and AI will build a 5-level path for you."}
+                </p>
+              </div>
+
+              {starterTemplate && (
+                <button
+                  onClick={() => {
+                    sfx("unlock");
+                    const t = starterTemplate;
+                    setRealms((prev) =>
+                      prev.some((r) => r.id === t.id)
+                        ? prev
+                        : [...prev, { ...t, favorite: true, missions: t.missions.map((m) => ({ ...m })) }]
+                    );
+                    setActiveDomainId(t.id);
+                    setNoMatchDomain(null);
+                  }}
+                  className="w-full py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider border border-[#b49b64]/40 text-[#b49b64] hover:text-[#e8dfc8] hover:border-[#b49b64] transition-colors"
+                >
+                  Add “{starterTemplate.name.replace("Operation: ", "")}” starter path
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  if (noMatchDomain) setCustomGoal(noMatchDomain);
+                  setShowAiModal(true);
+                  sfx("click");
+                }}
+                className="btn-teal w-full py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2"
+              >
+                <Sparkles className="w-3.5 h-3.5" strokeWidth={2} />
+                Forge Custom AI Roadmap
+              </button>
+            </motion.div>
+          ) : selected ? (
             /* ── Mission Detail ── */
             <motion.div
               key={`mission-${selected.id}`}
@@ -697,6 +895,7 @@ Return ONLY a valid JSON object:
             </motion.div>
           ) : (
             /* ── Domain Details ── */
+            activeRealm && (
             <motion.div
               key="domain-info"
               initial={{ opacity: 0, x: -16 }}
@@ -762,6 +961,7 @@ Return ONLY a valid JSON object:
                 <span>Forge Custom AI Roadmap</span>
               </button>
             </motion.div>
+            )
           )}
         </AnimatePresence>
       </aside>

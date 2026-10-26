@@ -219,8 +219,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      {/* ══════ PERSISTENT AI MENTOR ══════ */}
-      <GlobalMentorAgent />
+      {/* ══════ PERSISTENT AI MENTOR (after login, never on onboarding) ══════ */}
+      {!isBoarding && player.isAuthenticated && <GlobalMentorAgent />}
 
     </div>
   );

@@ -602,11 +602,21 @@
   position: relative;
 }
 
-/* ═════════════ DOMAIN COLOR TAGS ═════════════ */
+/* ═════════════ DOMAIN COLOR TAGS ═════════════ */.tag-frontend { background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.3); color: var(--purple-bright); }
+.tag-backend { background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3); color: var(--teal-bright); }
+.tag-devops { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); color: var(--amber-bright); }
+.tag-data { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--emerald-bright); }
+.tag-ai { background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.3); color: var(--rose-bright); }
+.tag-mobile { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); color: var(--blue-bright); }
 
-.tag-frontend { background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.3); color: var(--purple-bright); }
-.tag-backend { background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.3); color: var(--teal-bright); }
-.tag-devops { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: var(--amber-bright); }
-.tag-data { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: var(--emerald-bright); }
-.tag-ai { background: rgba(244,63,94,0.1); border: 1px solid rgba(244,63,94,0.3); color: var(--rose-bright); }
-.tag-mobile { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: var(--blue-bright); }
+/* ═════════════ SWORD CURSOR — project-wide ═════════════
+   The sword tip (hotspot 21,2 of the 64px image) is the pointing edge.
+   cursor is an inherited property, but Tailwind utilities and the rules
+   above set it explicitly on many elements — `*` + !important is the
+   only way to make one cursor win everywhere. The keyword after the
+   url() is the fallback if the image ever fails to load. */
+*,
+*::before,
+*::after {
+  cursor: url("/cursor.png") 21 2, auto !important;
+}

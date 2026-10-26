@@ -17,43 +17,42 @@ interface ProgressEntry {
   description: string;
   status: "completed" | "active" | "locked";
   xp: number;
-  date?: string;
 }
 
+/* Milestone roadmap — every status below is DERIVED from real player state
+   (onboarding completion + missions actually completed in the Dojo).
+   A brand-new user sees nothing completed: no fake XP, no fake dates. */
 const progressLog: ProgressEntry[] = [
   {
     id: "q1",
     chapter: "Getting Started",
     title: "Career Discovery Assessment",
     description: "You answered AI-generated questions and discovered your ideal IT career path. Your personalized learning journey was created based on your interests and goals.",
-    status: "completed",
+    status: "locked",
     xp: 50,
-    date: "Day 1",
   },
   {
     id: "q2",
     chapter: "Foundations",
     title: "Understanding the Basics",
     description: "You learned the fundamental concepts of how technology works — from web requests to data storage.",
-    status: "completed",
+    status: "locked",
     xp: 100,
-    date: "Day 1",
   },
   {
     id: "q3",
     chapter: "Building Skills",
     title: "First Practical Project",
     description: "You applied your knowledge by building your first small project, turning theory into practice.",
-    status: "completed",
+    status: "locked",
     xp: 150,
-    date: "Day 2",
   },
   {
     id: "q4",
     chapter: "Going Deeper",
     title: "Intermediate Concepts",
     description: "Dive deeper into your chosen domain. Learn design patterns, best practices, and industry tools.",
-    status: "active",
+    status: "locked",
     xp: 200,
   },
   {
@@ -85,35 +84,30 @@ export default function ProgressPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const liveEntries = useMemo(() => {
-    const completed = new Set(player.completedMissions);
-    const entryToMission: Record<string, string> = {
-      q1: "__onboarding__",
-      q2: "m1",
-      q3: "m2",
-      q4: "backend-index-of-knowledge",
-      q5: "m4",
-      q6: "m5",
-    };
+    /* q1 requires FINISHED ONBOARDING (not merely being signed in).
+       q2–q6 unlock only as the player really completes missions. */
+    const missionsDone = player.completedMissions.length;
+    const doneAt = [
+      player.onboardingComplete,
+      missionsDone >= 1,
+      missionsDone >= 2,
+      missionsDone >= 4,
+      missionsDone >= 6,
+      missionsDone >= 8,
+    ];
     let foundActive = false;
-    return progressLog.map((q) => {
-      const mId = entryToMission[q.id];
-      if (mId === "__onboarding__" && player.isAuthenticated) {
-        return { ...q, status: "completed" as const };
-      }
-      if (mId && completed.has(mId)) {
-        return { ...q, status: "completed" as const };
-      }
+    return progressLog.map((q, i) => {
+      if (doneAt[i]) return { ...q, status: "completed" as const };
       if (!foundActive) {
         foundActive = true;
         return { ...q, status: "active" as const };
       }
       return { ...q, status: "locked" as const };
     });
-  }, [player.completedMissions, player.isAuthenticated]);
+  }, [player.completedMissions, player.onboardingComplete]);
 
-  const completedXP = liveEntries
-    .filter((q) => q.status === "completed")
-    .reduce((sum, q) => sum + q.xp, 0);
+  /* Real lifetime XP from the game state — never a fabricated milestone sum */
+  const completedXP = player.xp;
 
   const completedCount = liveEntries.filter((q) => q.status === "completed").length;
   const progressPercent = Math.round((completedCount / liveEntries.length) * 100);
@@ -206,9 +200,6 @@ export default function ProgressPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    {q.date && (
-                      <span className="text-[10px] text-[#3d3830]">{q.date}</span>
-                    )}
                     <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
                       q.status === "completed" ? "border-[#10b981]/20 bg-[#10b981]/10 text-[#34d399]" :
                       q.status === "active" ? "border-[#06b6d4]/20 bg-[#06b6d4]/10 text-[#22d3ee]" :

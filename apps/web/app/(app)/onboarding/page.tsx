@@ -7,15 +7,21 @@ import { CleanNarratorImg } from "@/lib/clean-samurai";
 import { gsap, useGSAP, prefersReducedMotion } from "@/lib/gsap";
 import { useGame } from "@/lib/game-context";
 import {
-  generateFirstQuestion,
-  generateNextQuestion,
   analyzeUserProfile,
   analyzeFreeText,
   profileFromRecommendation,
+  validateCustomInput,
   OnboardingQuestion,
   OnboardingProfile,
   CareerRecommendation,
 } from "@/lib/ai-onboarding";
+import {
+  TOTAL_QUESTIONS,
+  getQuestion,
+  opensCustomText,
+  answerKeyForStep,
+  RecordedAnswer,
+} from "@/lib/onboarding-questions";
 
 /* ═══════════════════════════════════════════
    AI-POWERED ONBOARDING WITH NARRATOR SENSEI
@@ -28,7 +34,6 @@ import {
    interest is fully outside engineering.
    ═══════════════════════════════════════════ */
 
-const TOTAL_QUESTIONS = 6;
 
 const DOMAIN_COLORS: Record<string, string[]> = {
   teal: ["#22d3ee", "#06b6d4"],
@@ -330,10 +335,16 @@ function ResultsStep({
   profile,
   onPickPrimary,
   onCreateAccount,
+  onRevise,
+  onBackToSelection,
 }: {
   profile: OnboardingProfile;
   onPickPrimary: (rec: CareerRecommendation) => void;
   onCreateAccount: () => void;
+  /** shown when a custom description was rejected — back to the text step */
+  onRevise?: () => void;
+  /** shown when a custom description was rejected — back to career direction */
+  onBackToSelection?: () => void;
 }) {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -352,7 +363,7 @@ function ResultsStep({
             Honest Counsel
           </span>
           <h2 className="font-cinzel text-xl md:text-3xl font-extrabold text-[#e8dfc8]">
-            Your interest is outside the engineering & tech world
+            {profile.rejectionHeading || "Your interest is outside the engineering & tech world"}
           </h2>
           {profile.freeTextInterest && (
             <p className="text-sm text-[#9a9182] italic">
@@ -376,6 +387,26 @@ function ResultsStep({
           >
             Still Explore The Platform →
           </button>
+          {(onRevise || onBackToSelection) && (
+            <div className="flex items-center justify-center gap-3 pt-2 flex-wrap">
+              {onRevise && (
+                <button
+                  onClick={onRevise}
+                  className="font-cinzel text-xs font-bold tracking-widest uppercase px-6 py-3 rounded-lg border border-[#b49b64]/40 text-[#b49b64] hover:text-[#e8dfc8] hover:border-[#b49b64] transition-colors"
+                >
+                  Revise My Description
+                </button>
+              )}
+              {onBackToSelection && (
+                <button
+                  onClick={onBackToSelection}
+                  className="font-cinzel text-xs font-bold tracking-widest uppercase px-6 py-3 rounded-lg border border-[#b49b64]/40 text-[#b49b64] hover:text-[#e8dfc8] hover:border-[#b49b64] transition-colors"
+                >
+                  Choose A Different Career Area
+                </button>
+              )}
+            </div>
+          )}
           <p className="text-xs text-[#6b6358] italic">
             You can retake the assessment anytime — your answers stay yours.
           </p>
@@ -399,7 +430,7 @@ function ResultsStep({
     >
       <div className="text-center space-y-2">
         <span className="text-xs font-mono uppercase tracking-widest px-3 py-1 rounded-full border border-[#b49b64]/50 bg-[#b49b64]/10 text-[#b49b64]">
-          Analyzed From Your {Object.keys(profile.answers).length} Responses
+          Analyzed From Your {Object.keys(profile.answers).filter((k) => /^q\d/.test(k)).length} Responses
         </span>
         <h2 className="font-cinzel text-xl md:text-2xl font-extrabold text-[#e8dfc8]">
           Paths ranked for you — {top.domainName} first, {alternates.length > 0 ? "but every match is yours to choose" : "choose freely"}
@@ -579,45 +610,21 @@ export default function OnboardingPage() {
   const [name, setName] = useState("");
   const [step, setStep] = useState(0);
   const [dialogueDone, setDialogueDone] = useState(false);
-  const [questions, setQuestions] = useState<OnboardingQuestion[]>([]);
-  const [answers, setAnswers] = useState<{ questionId: string; questionText: string; selectedIds: string[]; selectedLabels: string[] }[]>([]);
+  const [answers, setAnswers] = useState<RecordedAnswer[]>([]);
   const [currentSelection, setCurrentSelection] = useState<string[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
+  /** free-text custom description for the Question 5 Others step */
+  const [customText, setCustomText] = useState("");
+  /** clarification attached to the custom-input step — never a numbered question */
+  const [clarifyMsg, setClarifyMsg] = useState("");
+  const [isValidating, setIsValidating] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [profile, setProfile] = useState<OnboardingProfile | null>(null);
   /** guards double-advance on rapid clicks */
   const advancingRef = useRef(false);
+  /** guards duplicate custom-input submissions */
+  const validatingRef = useRef(false);
 
   const resetDialogue = useCallback(() => setDialogueDone(false), []);
-
-  /* Generate AI question for a given step */
-  const fetchQuestionForStep = useCallback(
-    async (stepIdx: number, userAnswers: typeof answers) => {
-      setIsGenerating(true);
-      try {
-        let q: OnboardingQuestion;
-        if (stepIdx === 0) {
-          q = await generateFirstQuestion(name || "Learner");
-        } else {
-          const prevFormatted = userAnswers.map((a) => ({
-            question: a.questionText,
-            answer: a.selectedLabels.join(", "),
-          }));
-          q = await generateNextQuestion(name || "Learner", prevFormatted, stepIdx + 1, TOTAL_QUESTIONS);
-        }
-        setQuestions((prev) => {
-          const updated = [...prev];
-          updated[stepIdx] = q;
-          return updated;
-        });
-      } catch (err) {
-        console.error("Failed to generate AI question:", err);
-      } finally {
-        setIsGenerating(false);
-      }
-    },
-    [name]
-  );
 
   /* Start assessment when welcome completes */
   function handleStartAssessment() {
@@ -625,59 +632,63 @@ export default function OnboardingPage() {
     if (typeof window !== "undefined") {
       localStorage.setItem("character_name", name);
     }
+    setAnswers([]);
+    setCurrentSelection([]);
+    setCustomText("");
+    setClarifyMsg("");
     setPhase("assessment");
     setStep(0);
     resetDialogue();
-    fetchQuestionForStep(0, []);
   }
 
-  const currentQuestion = questions[step] || null;
+  /* Deterministic adaptive question for the current step — always recomputed
+     from the answers recorded before it, so changing an earlier answer
+     automatically recalculates every downstream branch. */
+  const currentQuestion: OnboardingQuestion | null =
+    phase === "assessment" ? getQuestion(step, answers, name || "Learner") : null;
 
-  /* Handle option selection — single select auto-advances */
+  /* Handle option selection — a click saves the answer and auto-advances */
   function selectOption(optionId: string) {
     if (!currentQuestion || advancingRef.current) return;
 
-    if (currentQuestion.multiSelect) {
-      setCurrentSelection((prev) =>
-        prev.includes(optionId) ? prev.filter((x) => x !== optionId) : [...prev, optionId]
-      );
-    } else {
+    // Question 5 "Others" opens the free-text field inside the same numbered step
+    if (opensCustomText(step, optionId)) {
       setCurrentSelection([optionId]);
-      const chosen = optionId;
-      advancingRef.current = true;
-      window.setTimeout(() => {
-        advancingRef.current = false;
-        runAdvance([chosen]);
-      }, 280);
+      setClarifyMsg("");
+      return;
     }
+
+    setCurrentSelection([optionId]);
+    const chosen = optionId;
+    advancingRef.current = true;
+    window.setTimeout(() => {
+      advancingRef.current = false;
+      runAdvance([chosen]);
+    }, 280);
   }
 
   function isOptionSelected(optionId: string) {
     return currentSelection.includes(optionId);
   }
 
-  /* Next-question button (multiSelect path) */
-  function handleNextQuestion() {
-    if (!currentQuestion || currentSelection.length === 0) return;
-    runAdvance(currentSelection);
-  }
-
   /**
-   * Full advance pipeline: record the answer for this step, move to the
-   * next question, or run the ranked analysis when the assessment is done.
-   * Safe for both click-auto-advance and the multiSelect Continue button
-   * because the selection is passed explicitly (no stale-state reads).
+   * Full advance pipeline: save the answer for this step, then move to the
+   * next numbered question — or run the analysis once Question 6 is answered.
+   * answers.slice(0, step) drops stale downstream answers when an earlier
+   * answer changed, so every later branch recalculates. The selection is
+   * passed explicitly so rapid clicks never read stale state.
    */
-  async function runAdvance(selection: string[]) {
+  async function runAdvance(selection: string[], freeText?: string) {
     if (!currentQuestion || selection.length === 0) return;
 
-    const selectedLabels = selection.map(
-      (id) => currentQuestion.options.find((o) => o.id === id)?.label || id
-    );
+    const selectedLabels = freeText
+      ? [freeText]
+      : selection.map((id) => currentQuestion.options.find((o) => o.id === id)?.label || id);
 
-    const updatedAnswers = [
+    const updatedAnswers: RecordedAnswer[] = [
       ...answers.slice(0, step),
       {
+        answerKey: answerKeyForStep(step, selection, answers),
         questionId: currentQuestion.id,
         questionText: currentQuestion.question,
         selectedIds: selection,
@@ -687,8 +698,11 @@ export default function OnboardingPage() {
 
     setAnswers(updatedAnswers);
     setCurrentSelection([]);
+    setCustomText("");
+    setClarifyMsg("");
 
     if (step + 1 >= TOTAL_QUESTIONS) {
+      /* Question 6 answered — the recommendation is generated only now */
       setPhase("analyzing");
       const formattedForAnalysis = updatedAnswers.map((a) => ({
         question: a.questionText,
@@ -700,31 +714,93 @@ export default function OnboardingPage() {
         setPhase("details");
         return;
       }
-      setProfile(res);
-      localStorage.setItem("cv_onboarding_profile", JSON.stringify(res));
-      syncToPlayer(res);
+      /* structured keys (educationStage, experienceLevel, …) alongside q0…q5 */
+      const structured: Record<string, string | string[]> = { ...res.answers };
+      for (const a of updatedAnswers) {
+        structured[a.answerKey] =
+          a.answerKey === "customCareerDescription" ? a.selectedLabels[0] || "" : a.selectedIds[0];
+      }
+      const finalProfile = { ...res, answers: structured };
+      setProfile(finalProfile);
+      localStorage.setItem("cv_onboarding_profile", JSON.stringify(finalProfile));
+      syncToPlayer(finalProfile);
       setPhase("results");
     } else {
       const nextStep = step + 1;
       setStep(nextStep);
       resetDialogue();
-      fetchQuestionForStep(nextStep, updatedAnswers);
     }
   }
 
-  /* Return to previous question */
+  /* Question 5 custom description — validated before it can join the path */
+  async function handleCustomSubmit() {
+    const text = customText.trim();
+    if (text.length < 8 || validatingRef.current || !currentQuestion) return;
+    validatingRef.current = true;
+    setIsValidating(true);
+    try {
+      const prior = answers.slice(0, step).map((a) => ({
+        question: a.questionText,
+        answer: a.selectedLabels.join(", "),
+      }));
+      const result = await validateCustomInput(name || "Learner", text, prior);
+
+      if (result.outcome === "relevant") {
+        await runAdvance(["others"], text);
+      } else if (result.outcome === "ambiguous") {
+        /* clarification attached to this step — never a new numbered question */
+        setClarifyMsg(result.message);
+      } else {
+        /* out_of_scope / unsafe — stop the flow here: no roadmap is generated.
+           Earlier answers stay intact so the user can revise or step back. */
+        const exp = answers[1]?.selectedIds[0];
+        const rejected: OnboardingProfile = {
+          name: name || "Learner",
+          answers: {},
+          status: "outside-engineering",
+          recommendedDomain: text.slice(0, 60),
+          domainColor: "rose",
+          difficultyLevel:
+            exp === "advanced" ? "Advanced" : exp === "intermediate" ? "Intermediate" : "Beginner",
+          learningPathSummary: "",
+          interests: [text.slice(0, 60)],
+          strengths: [],
+          suggestedTopics: [],
+          recommendations: [],
+          freeTextInterest: text,
+          outOfEngineeringSuggestion: result.message,
+          rejectionHeading:
+            result.outcome === "unsafe_or_disallowed"
+              ? "That request is outside what CareerVerse can help with"
+              : "CareerVerse specialises in IT careers",
+        };
+        setProfile(rejected);
+        setPhase("results");
+      }
+    } finally {
+      validatingRef.current = false;
+      setIsValidating(false);
+    }
+  }
+
+  /* Return to the immediately preceding step, restoring its selection */
   function handleBack() {
     if (step > 0) {
       const prevStep = step - 1;
       const prevAnswer = answers[prevStep];
       setCurrentSelection(prevAnswer?.selectedIds || []);
+      setCustomText(
+        prevAnswer?.answerKey === "customCareerDescription" ? prevAnswer.selectedLabels[0] || "" : ""
+      );
+      setClarifyMsg("");
       setStep(prevStep);
       resetDialogue();
     } else {
       setPhase("welcome");
-      setQuestions([]);
       setAnswers([]);
       setCurrentSelection([]);
+      setCustomText("");
+      setClarifyMsg("");
     }
   }
 
@@ -817,16 +893,8 @@ export default function OnboardingPage() {
           {/* Assessment: AI Questions */}
           {phase === "assessment" && (
             <motion.div key={step} className="space-y-8">
-              {isGenerating ? (
-                <div className="p-12 text-center surface rounded-2xl max-w-md mx-auto space-y-4 bg-[#090b0f]/90 backdrop-blur-md border-2 border-[#b49b64]/40">
-                  <div className="w-10 h-10 border-2 border-[#b49b64] border-t-transparent rounded-full animate-spin mx-auto" />
-                  <p className="font-cinzel text-sm text-[#b49b64] animate-pulse">
-                    AI Sensei is formulating your personalized question...
-                  </p>
-                </div>
-              ) : (
-                /* Reveal Question & Choices when dialogueDone is true */
-                <AnimatePresence mode="wait">
+              {/* Reveal Question & Choices when dialogueDone is true */}
+              <AnimatePresence mode="wait">
                   {dialogueDone && currentQuestion && (
                     <motion.div
                       initial={{ opacity: 0, y: 18 }}
@@ -838,8 +906,8 @@ export default function OnboardingPage() {
                       <div className="text-center space-y-2">
                         <span className="font-cinzel text-xs text-[#b49b64] uppercase tracking-widest">
                           Question {step + 1} of {TOTAL_QUESTIONS}
-                          {currentQuestion.multiSelect
-                            ? " • Select all that apply, then Continue"
+                          {currentQuestion.inputKind === "text"
+                            ? " • Describe it in your own words"
                             : " • Click a card to answer"}
                         </span>
                         <p className="font-cinzel text-xl md:text-3xl lg:text-4xl font-extrabold text-[#e8dfc8] tracking-wide drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">
@@ -847,45 +915,87 @@ export default function OnboardingPage() {
                         </p>
                       </div>
 
-                      {/* Choice cards — CLICK IS ENOUGH for single-select */}
-                      <div
-                        className={`grid gap-4 md:gap-6 ${
-                          currentQuestion.options.length <= 4
-                            ? "grid-cols-1 sm:grid-cols-2"
-                            : "grid-cols-2 sm:grid-cols-3"
-                        }`}
-                      >
-                        {currentQuestion.options.map((c) => {
-                          const selected = isOptionSelected(c.id);
-                          return (
+                      {/* Question 5 custom description — same numbered step, never a 7th question */}
+                      {currentQuestion.inputKind === "text" || (step === 4 && currentSelection.includes("others")) ? (
+                        <div className="max-w-2xl mx-auto space-y-4">
+                          <textarea
+                            value={customText}
+                            onChange={(e) => {
+                              setCustomText(e.target.value);
+                              if (clarifyMsg) setClarifyMsg("");
+                            }}
+                            rows={4}
+                            maxLength={600}
+                            placeholder="e.g. I want to build an AI assistant that answers questions about PDF files…"
+                            className="w-full bg-[#040507] border-2 border-[#b49b64]/50 rounded-xl px-5 py-4 font-sans text-base text-[#e8dfc8] placeholder:text-[#3d3830] focus:outline-none focus:border-[#b49b64] shadow-inner resize-none"
+                            autoFocus
+                          />
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="font-mono text-[10px] text-[#6b6358]">{customText.length}/600</span>
                             <button
-                              key={c.id}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                selectOption(c.id);
+                                handleCustomSubmit();
                               }}
-                              className={`text-left p-6 md:p-8 rounded-xl transition-all duration-200 shadow-2xl backdrop-blur-md border-2 ${
-                                selected
-                                  ? "bg-[#14120e]/95 border-[#b49b64] ring-2 ring-[#b49b64]/30 scale-[1.02]"
-                                  : "bg-[#090b0f]/90 border-[#b49b64]/25 hover:border-[#b49b64]/60 hover:bg-[#0d1016]/95 hover:scale-[1.01]"
+                              disabled={customText.trim().length < 8 || isValidating}
+                              className={`btn-scroll px-10 py-3.5 rounded-lg text-xs md:text-sm font-bold uppercase tracking-widest transition-all ${
+                                customText.trim().length < 8 || isValidating
+                                  ? "opacity-30 cursor-not-allowed"
+                                  : "shadow-[0_0_16px_rgba(180,155,100,0.12)]"
                               }`}
                             >
-                              <p
-                                className={`font-cinzel text-base md:text-xl lg:text-2xl font-extrabold tracking-wider ${
-                                  selected ? "text-[#b49b64]" : "text-[#e0d6c3]"
+                              {isValidating ? "Checking Your Goal…" : "Confirm →"}
+                            </button>
+                          </div>
+                          {clarifyMsg && (
+                            <p className="text-[11px] text-[#fbbf24] text-right leading-relaxed">{clarifyMsg}</p>
+                          )}
+                          {customText.trim().length > 0 && customText.trim().length < 8 && (
+                            <p className="text-[11px] text-[#f43f5e] text-right">
+                              A little more detail please (min 8 characters)
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div
+                          className={`grid gap-4 md:gap-6 ${
+                            currentQuestion.options.length <= 4
+                              ? "grid-cols-1 sm:grid-cols-2"
+                              : "grid-cols-2 sm:grid-cols-3"
+                          }`}
+                        >
+                          {currentQuestion.options.map((c) => {
+                            const selected = isOptionSelected(c.id);
+                            return (
+                              <button
+                                key={c.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  selectOption(c.id);
+                                }}
+                                className={`text-left p-6 md:p-8 rounded-xl transition-all duration-200 shadow-2xl backdrop-blur-md border-2 ${
+                                  selected
+                                    ? "bg-[#14120e]/95 border-[#b49b64] ring-2 ring-[#b49b64]/30 scale-[1.02]"
+                                    : "bg-[#090b0f]/90 border-[#b49b64]/25 hover:border-[#b49b64]/60 hover:bg-[#0d1016]/95 hover:scale-[1.01]"
                                 }`}
                               >
-                                {c.label}
-                              </p>
-                              <p className="text-sm md:text-base text-[#9a9182] mt-2.5 leading-relaxed font-sans font-medium">
-                                {c.description}
-                              </p>
-                            </button>
-                          );
-                        })}
-                      </div>
+                                <p
+                                  className={`font-cinzel text-base md:text-xl lg:text-2xl font-extrabold tracking-wider ${
+                                    selected ? "text-[#b49b64]" : "text-[#e0d6c3]"
+                                  }`}
+                                >
+                                  {c.label}
+                                </p>
+                                <p className="text-sm md:text-base text-[#9a9182] mt-2.5 leading-relaxed font-sans font-medium">
+                                  {c.description}
+                                </p>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
 
-                      {/* Navigation buttons — only needed for multiSelect */}
+                      {/* Return control — steps back to the immediately preceding question */}
                       <div className="flex items-center justify-between pt-6">
                         <button
                           onClick={(e) => {
@@ -896,27 +1006,10 @@ export default function OnboardingPage() {
                         >
                           ← Return
                         </button>
-                        {currentQuestion.multiSelect ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleNextQuestion();
-                            }}
-                            disabled={currentSelection.length === 0}
-                            className={`btn-scroll px-10 py-3.5 rounded-lg text-xs md:text-sm font-bold uppercase tracking-widest transition-all ${
-                              currentSelection.length === 0
-                                ? "opacity-30 cursor-not-allowed"
-                                : "shadow-[0_0_16px_rgba(180,155,100,0.12)]"
-                            }`}
-                          >
-                            {step + 1 === TOTAL_QUESTIONS ? "Complete Assessment →" : "Continue →"}
-                          </button>
-                        ) : null}
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
-              )}
             </motion.div>
           )}
 
@@ -953,6 +1046,32 @@ export default function OnboardingPage() {
               profile={profile}
               onPickPrimary={handlePickPrimary}
               onCreateAccount={() => router.push("/auth")}
+              onRevise={
+                profile.rejectionHeading
+                  ? () => {
+                      setCustomText(profile.freeTextInterest || "");
+                      setClarifyMsg("");
+                      setCurrentSelection(["others"]);
+                      setProfile(null);
+                      setStep(4);
+                      resetDialogue();
+                      setPhase("assessment");
+                    }
+                  : undefined
+              }
+              onBackToSelection={
+                profile.rejectionHeading
+                  ? () => {
+                      setCustomText("");
+                      setClarifyMsg("");
+                      setCurrentSelection(answers[3]?.selectedIds || []);
+                      setProfile(null);
+                      setStep(3);
+                      resetDialogue();
+                      setPhase("assessment");
+                    }
+                  : undefined
+              }
             />
           )}
         </AnimatePresence>

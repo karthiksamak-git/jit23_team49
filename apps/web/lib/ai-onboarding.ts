@@ -1,6 +1,9 @@
 /* ═══════════════════════════════════════════
    AI-POWERED ONBOARDING ENGINE
-   Generates personalized questions via Groq AI.
+   The question flow is the deterministic six-
+   question tree in onboarding-questions.ts.
+   The AI validates free-text custom input and
+   ranks paths from ALL answers together.
    Recommendations are produced by scoring every
    answer against the full CareerVerse taxonomy
    (career-taxonomy.ts). There is NO default
@@ -26,7 +29,8 @@ export interface OnboardingQuestion {
   senseiDialogue: string[];
   question: string;
   options: { id: string; label: string; description: string }[];
-  multiSelect?: boolean;
+  /** "text" = free-text custom-description step (still one numbered question) */
+  inputKind?: "text";
 }
 
 /* ── Ranked recommendation returned by the analysis engine ── */
@@ -68,6 +72,8 @@ export interface OnboardingProfile {
   freeTextInterest?: string;
   /** suggestion text shown when interests are outside engineering */
   outOfEngineeringSuggestion?: string;
+  /** custom heading for rejected (out-of-scope / unsafe) custom input */
+  rejectionHeading?: string;
 }
 
 /**
@@ -158,12 +164,26 @@ function toRecommendation(ds: DomainScore): CareerRecommendation {
 
 function difficultyFromAnswers(answers: { question: string; answer: string }[]): OnboardingProfile["difficultyLevel"] {
   const text = normalizeText(answers.map((a) => a.answer).join(" "));
+  // The structured Q2 experienceLevel label wins when present
+  if (/\badvanced\b/.test(text)) return "Advanced";
+  if (/intermediate/.test(text)) return "Intermediate";
+  if (/complete beginner|basic knowledge|beginner/.test(text)) return "Beginner";
   if (experiencedText.test(text)) return "Advanced";
   if (projectText.test(text)) return "Intermediate";
   return "Beginner";
 }
 const experiencedText = /quite experienced|comfortable writing|advanced|experienced/;
 const projectText = /some projects|built a few|moderate|few small projects|intermediate/;
+
+/* Study availability shapes the SCHEDULE only — never the career choice. */
+function studyNoteFromAnswers(answers: { question: string; answer: string }[]): string {
+  const text = normalizeText(answers.map((a) => a.answer).join(" · "));
+  if (text.includes("less than 1 hour")) return "Suggested pace: compact daily sessions — one focused topic per sitting.";
+  if (text.includes("1–2 hours") || text.includes("1-2 hours")) return "Suggested pace: a steady daily session — one milestone every few days.";
+  if (text.includes("2–4 hours") || text.includes("2-4 hours")) return "Suggested pace: a balanced daily schedule — theory, practice and a project block.";
+  if (text.includes("more than 4 hours")) return "Suggested pace: an intensive schedule — fast milestones with substantial project work.";
+  return "";
+}
 
 /* ═══════════════════════════════════════════
    PROFILE BUILDER (shared)
@@ -172,7 +192,7 @@ function buildProfileFromScores(
   userName: string,
   answers: { question: string; answer: string }[],
   scored: DomainScore[],
-  options: { freeTextInterest?: string; outOfEngineeringSuggestion?: string } = {}
+  options: { freeTextInterest?: string; outOfEngineeringSuggestion?: string; aiExplanation?: string } = {}
 ): OnboardingProfile {
   const rawAnswers: Record<string, string | string[]> = {};
   answers.forEach((a, i) => {
@@ -181,6 +201,7 @@ function buildProfileFromScores(
 
   const top = scored[0];
   const difficulty = difficultyFromAnswers(answers);
+  const pace = studyNoteFromAnswers(answers);
 
   /* ── No signal at all → needs-details (never default). A single real keyword
      hit is enough to surface ranked suggestions instead of blocking the user. ── */
@@ -216,7 +237,9 @@ function buildProfileFromScores(
       `${domain.name} matches your answers better than anything else in the taxonomy. ` +
       `Evidence from your responses: ${top.hits.slice(0, 3).join(", ")}. ` +
       `Your first milestones: ${domain.roadmap[0]} → ${domain.roadmap[1]}. ` +
-      `Realistic entry roles: ${domain.entryRoles.slice(0, 2).join(", ")}.`,
+      `Realistic entry roles: ${domain.entryRoles.slice(0, 2).join(", ")}.` +
+      (options.aiExplanation ? ` ${options.aiExplanation}` : "") +
+      (pace ? ` ${pace}` : ""),
     interests: recommendations
       .slice(0, 2)
       .flatMap((r) => [r.domainName, ...r.subdomains.slice(0, 1)]),
@@ -240,8 +263,71 @@ export async function analyzeUserProfile(
   userName: string,
   answers: { question: string; answer: string }[]
 ): Promise<OnboardingProfile> {
-  const scored = scoreAnswersToDomains(answers);
-  return buildProfileFromScores(userName, answers, scored);
+  const deterministic = scoreAnswersToDomains(answers);
+  let scored = deterministic;
+  let aiExplanation = "";
+
+  /* ── AI pass: analyse ALL answers together and rank taxonomy domains.
+     The selected direction is evidence of interest, not proof it is the
+     best fit — the AI may surface a better-fitting related role.
+     Falls back to deterministic scoring when the AI is unavailable. ── */
+  try {
+    const domainList = CAREER_DOMAINS.map((d) => `${d.id}: ${d.name}`).join("\n");
+    const answerBlock = answers
+      .map((a, i) => `Answer ${i + 1} — ${a.question}\n${a.answer}`)
+      .join("\n\n");
+    const systemPrompt: ChatMessage = {
+      role: "system",
+      content: `You are a senior IT career advisor analysing a student's complete onboarding responses.
+
+All answers:
+${answerBlock}
+
+Taxonomy domains — rank ONLY using these exact ids:
+${domainList}
+
+Rules:
+- Analyse all answers together; do not map a single answer directly to a role.
+- The selected career direction is evidence of stated interest, not proof it is the best fit; recommend a related role when the evidence supports it.
+- Daily study availability affects the learning schedule only, never the domain choice.
+- Consider the student's experience level and objective when ranking.
+- Where the answers are thin, say so honestly in the explanation rather than inventing certainty.
+
+Return ONLY raw JSON:
+{"rankings":[{"domainId":"<id>","reason":"one short sentence"}],"explanation":"2-3 sentences on why these paths fit, plus any uncertainty"}
+Rank 1 to 3 domains.`,
+    };
+    const response = await chatWithGroq(
+      [systemPrompt, { role: "user", content: "Rank the best-fitting career domains for this student." }],
+      0.3
+    );
+    const parsed = extractJson<{ rankings?: { domainId: string; reason?: string }[]; explanation?: string }>(response);
+    const valid = (parsed.rankings || []).filter((r) => getDomainById(r.domainId));
+    if (valid.length > 0) {
+      const remaining = new Map(deterministic.map((d) => [d.domain.id, d] as const));
+      const merged: DomainScore[] = [];
+      valid.forEach((r, i) => {
+        const domain = getDomainById(r.domainId)!;
+        const base = remaining.get(domain.id);
+        remaining.delete(domain.id);
+        const reason = (r.reason || "").trim().slice(0, 90);
+        merged.push({
+          domain,
+          hits: [...(base?.hits || []), ...(reason ? [reason] : [])],
+          score: Math.max(base?.score || 0, 8 - i),
+        });
+      });
+      deterministic.forEach((d) => {
+        if (remaining.has(d.domain.id)) merged.push(d);
+      });
+      scored = merged;
+      aiExplanation = (parsed.explanation || "").trim().slice(0, 400);
+    }
+  } catch (err) {
+    console.warn("AI ranking unavailable — using taxonomy scoring:", err);
+  }
+
+  return buildProfileFromScores(userName, answers, scored, aiExplanation ? { aiExplanation } : {});
 }
 
 /* ═══════════════════════════════════════════
@@ -366,230 +452,96 @@ export function profileFromRecommendation(
 }
 
 /* ═══════════════════════════════════════════
-   Fallback: still AI-assisted for question
-   GENERATION only (kept from previous version)
+   CUSTOM-INPUT VALIDATION ("Others" description)
+   Returns one of the four spec outcomes. An
+   "ambiguous" clarification is attached to the
+   custom-input step — never a new numbered
+   question. Out-of-scope and unsafe outcomes
+   stop the recommendation flow.
    ═══════════════════════════════════════════ */
+export type CustomInputOutcome =
+  | "relevant"
+  | "ambiguous"
+  | "out_of_scope"
+  | "unsafe_or_disallowed";
 
-/**
- * Ensures an "Others" option is always included in question options
- */
-function ensureOthersOption(q: OnboardingQuestion): OnboardingQuestion {
-  if (!q.options || !Array.isArray(q.options)) return q;
-  const hasOthers = q.options.some(
-    (o) => o.id === "others" || o.label?.toLowerCase().includes("other")
-  );
-  if (!hasOthers) {
+export interface CustomInputResult {
+  outcome: CustomInputOutcome;
+  /** clarification or explanation shown to the student */
+  message: string;
+}
+
+export async function validateCustomInput(
+  userName: string,
+  text: string,
+  contextAnswers: { question: string; answer: string }[]
+): Promise<CustomInputResult> {
+  const cleaned = text.trim();
+  if (!cleaned) {
     return {
-      ...q,
-      options: [
-        ...q.options,
-        { id: "others", label: "Others", description: "Other topics or custom areas of interest" },
-      ],
+      outcome: "ambiguous",
+      message: "Please describe the kind of work you want in a little more detail.",
     };
   }
-  return q;
-}
 
-/* ═══════════════════════════════════════════
-   Generate the FIRST onboarding question
-   ═══════════════════════════════════════════ */
-export async function generateFirstQuestion(userName: string): Promise<OnboardingQuestion> {
-  const systemPrompt: ChatMessage = {
-    role: "system",
-    content: `You are a friendly IT mentor introducing a new student named "${userName}" to IT career exploration.
-
-Generate the FIRST onboarding question asking about their education background.
-Include 2 short dialogue lines for the AI mentor narrator to say before showing the question.
-
-Return ONLY a valid JSON object:
-{
-  "id": "background",
-  "senseiDialogue": [
-    "Welcome ${userName}! I'm glad you're taking the first step.",
-    "Before we explore your career options, tell me about your background."
-  ],
-  "question": "Where are you in your studies right now?",
-  "options": [
-    { "id": "school", "label": "In High School", "description": "Still in high school or preparing for college" },
-    { "id": "early_college", "label": "Early Engineering", "description": "First or second year of college/university" },
-    { "id": "late_college", "label": "Final Year Student", "description": "Third or fourth year, getting ready for jobs" },
-    { "id": "graduate", "label": "Graduated", "description": "Finished college and looking to learn/upskill" },
-    { "id": "others", "label": "Others", "description": "Other education backgrounds" }
-  ]
-}
-
-Rules:
-- 2 short dialogue lines in senseiDialogue
-- Always include an "others" option
-- Simple, clear language
-- NEVER ask about learning style, preferred learning method, or how they like to learn — the platform teaches everyone the same way, so this question is pointless. Ask about their interests, experience, or goals instead.
-- Do NOT wrap in markdown backticks. Return raw JSON only.`,
-  };
+  const context = contextAnswers.map((a) => `${a.question} → ${a.answer}`).join("\n");
 
   try {
-    const response = await chatWithGroq([systemPrompt, { role: "user", content: "Generate first question." }], 0.7);
-    const parsed = extractJson<OnboardingQuestion>(response);
-    return ensureOthersOption(parsed);
-  } catch (err) {
-    console.warn("AI first question failed, using fallback:", err);
-    return getFallbackQuestion(userName, 1);
-  }
-}
+    const domainList = CAREER_DOMAINS.map((d) => `${d.id} (${d.name})`).join(", ");
+    const systemPrompt: ChatMessage = {
+      role: "system",
+      content: `You validate a custom career description from a student named "${userName}" during IT career onboarding.
 
-/* ═══════════════════════════════════════════
-   Generate the NEXT question — fully personalized
-   ═══════════════════════════════════════════ */
-export async function generateNextQuestion(
-  userName: string,
-  previousAnswers: { question: string; answer: string }[],
-  questionNumber: number,
-  totalQuestions: number
-): Promise<OnboardingQuestion> {
-  const answersContext = previousAnswers
-    .map((a, i) => `Q${i + 1}: "${a.question}" → Answer: "${a.answer}"`)
-    .join("\n");
-
-  const questionTopics = [
-    "their coding experience level",
-    "what kind of problems they enjoy solving (visual vs logic vs data)",
-    "which specific IT-career-related activities interest them most (be VERY concrete: name real fields like web development, mobile apps, data analysis, cybersecurity, AI, cloud, design, sales, marketing, product management, testing, etc.)",
-    "how much time they can dedicate each day",
-    "what their primary career goal is",
-  ];
-
-  const topicHint = questionTopics[questionNumber - 1] || "discovering their IT interests and goals";
-
-  const systemPrompt: ChatMessage = {
-    role: "system",
-    content: `You are a friendly IT mentor assessing a student named "${userName}".
-You are on question ${questionNumber} of ${totalQuestions}.
-
+Student's description: "${cleaned}"
 Previous answers:
-${answersContext}
+${context}
 
-Generate the NEXT personalized question focusing on: ${topicHint}.
-Include 2 short dialogue lines for the AI mentor narrator to speak before showing the question.
+Supported IT taxonomy domains: ${domainList}
 
-Return ONLY a valid JSON object:
-{
-  "id": "q_${questionNumber}",
-  "senseiDialogue": [
-    "First friendly reaction or transition based on their previous answers...",
-    "Second dialogue line introducing this question..."
-  ],
-  "question": "Personalized simple question text",
-  "options": [
-    { "id": "opt1", "label": "Short Label", "description": "Brief explanation" },
-    { "id": "others", "label": "Others", "description": "Other topics or custom interests" }
-  ],
-  "multiSelect": false
-}
+Classify the description and return EXACTLY one of these outcomes:
+- "relevant": it describes (or clearly relates to) an IT/technology career or goal. Examples: building an AI assistant that answers questions about PDF files; creating a mobile app for managing personal expenses; analysing cricket match statistics; automating business workflows using software.
+- "ambiguous": too vague to identify any career direction (e.g. "I want to do something with computers").
+- "out_of_scope": a clearly non-IT goal. Examples: becoming a professional cricket player, becoming a chef, learning professional cooking.
+- "unsafe_or_disallowed": a request that facilitates harmful or illegal activity.
 
-Rules:
-- 2 short dialogue lines in senseiDialogue
-- 3-5 options including an "Others" option
-- For IT activities/interests topic, set multiSelect to true
-- Option labels must clearly name real career fields, tools or technologies (these labels are scored against a career taxonomy)
-- Use clear, simple language
-- NEVER ask about learning style, preferred learning method, or "favorite way to learn" — the platform teaches everyone the same way, so that question is pointless. If the assigned topic is about learning, redirect it to their career interests or goals instead.
-- Do NOT wrap in markdown backticks. Return raw JSON only.`,
-  };
-
-  try {
-    const response = await chatWithGroq([systemPrompt, { role: "user", content: "Generate next question." }], 0.8);
-    const parsed = extractJson<OnboardingQuestion>(response);
-    return ensureOthersOption(parsed);
+Return ONLY raw JSON:
+{"outcome":"<outcome>","message":"one short sentence — a clarifying question for ambiguous, a polite explanation for out_of_scope, a safe redirect for unsafe_or_disallowed, empty for relevant"}`,
+    };
+    const response = await chatWithGroq(
+      [systemPrompt, { role: "user", content: "Classify this custom description." }],
+      0.2
+    );
+    const parsed = extractJson<{ outcome?: string; message?: string }>(response);
+    const allowed: CustomInputOutcome[] = ["relevant", "ambiguous", "out_of_scope", "unsafe_or_disallowed"];
+    if (parsed.outcome && allowed.includes(parsed.outcome as CustomInputOutcome)) {
+      const outcome = parsed.outcome as CustomInputOutcome;
+      const fallbacks: Record<CustomInputOutcome, string> = {
+        relevant: "",
+        ambiguous: "Could you describe it in a little more detail — what kind of work do you want to do?",
+        out_of_scope:
+          "CareerVerse specialises in IT careers and technology-focused learning paths, so we cannot build a roadmap for that goal.",
+        unsafe_or_disallowed:
+          "We can't help with that. CareerVerse focuses on safe, legitimate technical careers such as software development, cybersecurity defense and data engineering.",
+      };
+      return { outcome, message: (parsed.message || "").trim() || fallbacks[outcome] };
+    }
+    throw new Error("unrecognised outcome");
   } catch (err) {
-    console.warn(`AI question ${questionNumber} failed, using fallback:`, err);
-    return getFallbackQuestion(userName, questionNumber);
+    // Deterministic fallback when the classifier is unavailable:
+    // taxonomy keyword hits decide; never a fake roadmap from nothing.
+    console.warn("AI custom-input validation failed, using keyword fallback:", err);
+    const scored = scoreAnswersToDomains([{ question: "Custom goal", answer: cleaned }]);
+    if (scored[0] && scored[0].score >= 2) return { outcome: "relevant", message: "" };
+    if (scored[0] && scored[0].score >= 1)
+      return {
+        outcome: "ambiguous",
+        message: "Could you describe that a little more concretely — which technology or task do you have in mind?",
+      };
+    return {
+      outcome: "out_of_scope",
+      message:
+        "CareerVerse specialises in IT careers and technology-focused learning paths, so we cannot build a roadmap for that goal. If your interests do involve technology, revise your description and try again.",
+    };
   }
 }
 
-/* ═══════════════════════════════════════════
-   FALLBACK QUESTIONS WITH NARRATOR DIALOGUE
-   ═══════════════════════════════════════════ */
-function getFallbackQuestion(userName: string, questionNumber: number): OnboardingQuestion {
-  const fallbacks: OnboardingQuestion[] = [
-    {
-      id: "background",
-      senseiDialogue: [
-        `Welcome ${userName}! I'm glad you're taking the first step.`,
-        "Before we explore your career options, tell me about your background.",
-      ],
-      question: "Where are you in your studies right now?",
-      options: [
-        { id: "school", label: "In High School", description: "Still in high school or preparing for college" },
-        { id: "early_college", label: "Early Engineering", description: "First or second year of college/university" },
-        { id: "late_college", label: "Final Year Student", description: "Third or fourth year, getting ready for jobs" },
-        { id: "graduate", label: "Graduated", description: "Finished college and looking to learn/upskill" },
-        { id: "others", label: "Others", description: "Other education backgrounds" },
-      ],
-    },
-    {
-      id: "coding_exp",
-      senseiDialogue: [
-        "I see. Everyone starts at line one.",
-        "Now tell me — how much coding experience do you have?",
-      ],
-      question: "What is your current experience with programming?",
-      options: [
-        { id: "none", label: "Brand New", description: "I've never written code before — eager to learn!" },
-        { id: "little", label: "A Little Bit", description: "I've done basic tutorials or small exercises" },
-        { id: "moderate", label: "Some Projects", description: "I've built a few small projects on my own" },
-        { id: "experienced", label: "Quite Experienced", description: "I feel comfortable writing code and building apps" },
-        { id: "others", label: "Others", description: "Other practical or self-taught experience" },
-      ],
-    },
-    {
-      id: "problem_type",
-      senseiDialogue: [
-        "Good. Passion matters far more than starting point.",
-        "What kind of challenges bring out your best focus?",
-      ],
-      question: "What type of work energizes you most?",
-      options: [
-        { id: "visual_web", label: "Websites & User Interfaces", description: "Designing and building things that look great and feel smooth to use" },
-        { id: "logic_backend", label: "Servers & Databases", description: "Building behind-the-scenes systems, APIs and server logic" },
-        { id: "data_insights", label: "Data Analysis", description: "Discovering patterns and insights hidden in data" },
-        { id: "automation_cloud", label: "Cloud & Automation", description: "Automating workflows and managing cloud infrastructure" },
-        { id: "others", label: "Others", description: "Other types of technical problem-solving" },
-      ],
-    },
-    {
-      id: "interests",
-      senseiDialogue: [
-        "Every domain in technology offers a unique superpower.",
-        "Which of these career fields catch your attention?",
-      ],
-      question: "Select the career fields that interest you. (Pick multiple if you like)",
-      options: [
-        { id: "software_dev", label: "Software Development", description: "Creating applications for web, mobile, or desktop" },
-        { id: "data_analysis", label: "Data Analysis & AI", description: "Working with data, analytics, statistics and machine learning" },
-        { id: "cybersecurity", label: "Cybersecurity", description: "Protecting computer systems and networks from threats" },
-        { id: "design_ux", label: "Design & Product", description: "UI/UX design, product design, or product management" },
-        { id: "business_tech", label: "Tech Business Roles", description: "Project management, business analysis, sales or marketing for tech companies" },
-        { id: "network_cloud", label: "Cloud & Networking", description: "Cloud platforms, networking, DevOps, or system administration" },
-        { id: "others", label: "Others", description: "Exploring other fields or specialized technologies" },
-      ],
-      multiSelect: true,
-    },
-    {
-      id: "time_commitment",
-      senseiDialogue: [
-        "Consistency turns small steps into remarkable achievements.",
-        "How much time can you dedicate each day?",
-      ],
-      question: "Set your daily learning commitment.",
-      options: [
-        { id: "15min", label: "15 Minutes / Day", description: "Quick daily practice to build a habit" },
-        { id: "30min", label: "30 Minutes / Day", description: "Steady progress without feeling overwhelmed" },
-        { id: "1hour", label: "1 Hour / Day", description: "Solid daily practice for fast skill growth" },
-        { id: "2hours", label: "2+ Hours / Day", description: "Deep commitment to become job-ready quickly" },
-        { id: "others", label: "Others", description: "Flexible or weekend schedule" },
-      ],
-    },
-  ];
-
-  const idx = Math.min(questionNumber - 1, fallbacks.length - 1);
-  return fallbacks[idx];
-}
