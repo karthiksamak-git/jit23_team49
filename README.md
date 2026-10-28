@@ -102,17 +102,19 @@ Capacity progression from Novice to Master.
 
 Learn by solving—not just reading.
 
-Multiple-choice technical scenarios.
+Two modes in one workspace: a quick Practice Trial and a LeetCode-style Challenge Arena.
 
-Code-completion exercises.
+Eight question types: multiple choice, true/false, scenario, code fill, bug hunt, pseudocode ordering, ranking and typed answer.
 
-Bug identification and correction.
+Coding problems are judged by execution, not string matching: sample and hidden tests run against every submission.
 
-Pseudocode ordering challenges.
+A real multi-language compiler: JavaScript runs in the browser, Python, C, C++, Java, Go, Rust, Node, PHP and more run through the local Piston engine.
 
-Browser-based JavaScript execution.
+Wrong code is diagnosed: the AI mistake pass names the error, points at the line and shows the fix.
 
-Optional Piston execution for supported languages.
+Syntax-aware pseudocode and code completion in the conventions of the selected language.
+
+Adaptive difficulty, hearts, combo streaks and per-problem progress.
 
 </td>
 <td width="50%" valign="top">
@@ -180,6 +182,31 @@ External application links when available.
 <img src="https://img.shields.io/badge/07-PERSONALIZED_DASHBOARD-38BDF8?style=flat-square&labelColor=101522" alt="Personalized Dashboard" />
 
 A central workspace for learner progress, career profile, completed milestones, practice activity, and recommended next actions.
+
+<img src="https://img.shields.io/badge/08-PROFILE_PROGRESS-10B981?style=flat-square&labelColor=101522" alt="Profile and Progress" />
+
+The complete profile lives behind the avatar in the top bar — there is no separate page to hunt for.
+
+Real numbers only: tracked study hours, active days, XP, streaks, coins, accepted submissions and check-ins.
+
+A live learning calendar on real local dates, gold ring on today, gold dot on every check-in day.
+
+Two graphs: minutes learned and XP earned over the last 14 days.
+
+A daily check-in that pays XP and coins once per day and survives logout.
+
+A downloadable PDF report carrying the project tag, user details, statistics, charts, calendar, badges and the exact date and time it was generated.
+
+<img src="https://img.shields.io/badge/09-COLLECTION-F59E0B?style=flat-square&labelColor=101522" alt="Collection" />
+
+Every badge earned anywhere in the product, gathered in one collection.
+
+21 badges across streaks, check-ins, study time, missions, XP and accepted code.
+
+Each badge downloads on its own as a 1024×1024 (1:1) image.
+
+Earned and locked states, with the unlock requirement and the date it was earned.
+
 
 <img src="https://img.shields.io/badge/03-CAREER_DOMAINS-3B82F6?style=flat-square&labelColor=101522" alt="03 Career Domains" />
 
@@ -423,141 +450,88 @@ DYNAMIC UI RENDER
 
 <img src="https://img.shields.io/badge/06-TECHNOLOGY_STACK-00E5CC?style=flat-square&labelColor=101522" alt="06 Technology Stack" />
 
-<div align="center">
-
-LAYER
-
-TECHNOLOGY
-
-PURPOSE
-
-Framework
-
-Next.js 15
-
-Full-stack React application
-
-UI
-
-React 19
-
-Component-driven interface
-
-Language
-
-TypeScript
-
-Static typing
-
-Styling
-
-Vanilla CSS
-
-Custom design system
-
-Utility Styling
-
-Tailwind CSS v4
-
-Utility-based styling
-
-Animation
-
-Framer Motion
-
-Motion and transitions
-
-AI Provider
-
-Groq API
-
-Model inference
-
-AI Model
-
-Llama 3.3 70B Versatile
-
-Generative AI capabilities
-
-Database
-
-PostgreSQL
-
-Relational persistence
-
-ORM
-
-Prisma
-
-Database access
-
-Authentication
-
-Better Auth
-
-Authentication workflows
-
-Monorepo
-
-Turborepo
-
-Build and task orchestration
-
-Package Manager
-
-pnpm / npm
-
-Dependency management
-
-Job Search
-
-Adzuna API, optional
-
-Opportunity discovery
-
-Code Execution
-
-Piston, optional
-
-Multi-language execution
-
-</div>
+| LAYER | TECHNOLOGY | PURPOSE |
+| --- | --- | --- |
+| Framework | Next.js 15 (App Router) | Full-stack React application |
+| UI | React 19 | Component-driven interface |
+| Language | TypeScript | Static typing |
+| Styling | Tailwind CSS 4 + custom CSS | Utility styling and design system |
+| Animation | Framer Motion, GSAP | Motion, scroll and transitions |
+| 3D | three.js | Samurai character rendering |
+| State | React context, Zustand, React Query | Client and server state |
+| AI Provider | Groq API | Model inference |
+| AI Model | Llama 3.3 70B Versatile | Generative AI capabilities |
+| Database | PostgreSQL | Relational persistence |
+| ORM | Prisma | Database access |
+| Authentication | Better Auth | Authentication workflows |
+| Monorepo | Turborepo | Build and task orchestration |
+| Package Manager | npm workspaces | Dependency management |
+| Reports | pdf-lib | Vector PDF generation in the browser |
+| Job Search | Adzuna API, optional | Opportunity discovery |
+| Code Execution | Piston (Docker), optional | Multi-language compilation and runs |
 
 <img src="https://img.shields.io/badge/07-PROJECT_STRUCTURE-3B82F6?style=flat-square&labelColor=101522" alt="07 Project Structure" />
 
 CareerVerse/
 ├── apps/
-│   └── web/
+│   ├── api/                            # optional NestJS service
+│   │   ├── src/
+│   │   │   ├── modules/
+│   │   │   ├── neo4j/  prisma/  redis/
+│   │   │   └── main.ts
+│   │   └── package.json
+│   └── web/                            # Next.js 15 application
 │       ├── app/
-│       │   ├── (app)/
-│       │   │   ├── dashboard/
-│       │   │   ├── onboarding/
-│       │   │   ├── world-map/
-│       │   │   ├── worlds/
-│       │   │   │   └── dojo/
-│       │   │   ├── interview/
-│       │   │   └── opportunities/
-│       │   ├── auth/
+│       │   ├── (app)/                  # signed-in experience
+│       │   │   ├── dashboard/          # AI recommendations + quick access
+│       │   │   ├── discover/
+│       │   │   ├── interview/          # AI mock interviews
+│       │   │   ├── onboarding/         # branch-aware career assessment
+│       │   │   ├── opportunities/      # jobs & internships
+│       │   │   ├── portfolio/          # Collection: badges + 1:1 downloads
+│       │   │   ├── recommendations/
+│       │   │   ├── sandbox/            # Practice Lab + Challenge Arena
+│       │   │   ├── skill-tree/
+│       │   │   ├── world-map/          # personalized roadmap
+│       │   │   ├── worlds/dojo/        # adaptive trial
+│       │   │   └── layout.tsx          # top bar, nav, profile panel
 │       │   ├── api/
-│       │   │   └── ai/
-│       │   ├── page.tsx
-│       │   └── globals.css
+│       │   │   ├── ai/                 # Groq-backed AI routes
+│       │   │   ├── auth/[...all]/      # Better Auth handlers
+│       │   │   ├── execute/            # Piston code execution
+│       │   │   └── interview/          # start / answer / end
+│       │   ├── auth/
+│       │   ├── globals.css  premium.css
+│       │   ├── layout.tsx  page.tsx  providers.tsx
+│       ├── components/
+│       │   ├── profile-panel.tsx       # avatar dropdown: stats, calendar, graphs, PDF
+│       │   ├── global-mentor-agent.tsx
+│       │   └── ui/                     # hover-glow-button + shared UI
 │       ├── lib/
-│       │   ├── ai-client.ts
-│       │   ├── ai-onboarding.ts
-│       │   ├── ai-dojo.ts
-│       │   ├── game-context.tsx
-│       │   └── clean-samurai.tsx
-│       ├── prisma/
-│       │   └── schema.prisma
+│       │   ├── activity.ts             # real study-time tracking + check-ins
+│       │   ├── badges.ts               # badge rules + 1:1 PNG export
+│       │   ├── challenges.ts           # question types, judge, mistake explanations
+│       │   ├── code-runner.ts          # browser + Piston execution
+│       │   ├── user-report.ts          # PDF learning report (pdf-lib)
+│       │   ├── ai-onboarding.ts  ai-dojo.ts  ai-interview.ts
+│       │   ├── ai-learning-engine.ts  ai-client.ts  interview-llm.ts
+│       │   ├── game-context.tsx        # player state, XP, coins, sound
+│       │   ├── career-taxonomy.ts  realm-match.ts  adaptive-session.ts
+│       │   └── gsap.ts  gsap-premium.ts  sound-engine.ts  samurai-3d-viewer.tsx
+│       ├── scripts/compress-terrain.mjs
 │       ├── public/
-│       ├── package.json
-│       └── .env.example
+│       ├── next.config.js  postcss.config.js  tsconfig.json  package.json
+│       └── .env                        # local secrets, never committed
 ├── packages/
-├── package.json
-├── turbo.json
-├── pnpm-workspace.yaml
-└── README.md
+│   ├── config/                         # shared tsconfig
+│   ├── database/                       # Prisma schema + migrations
+│   ├── shared/
+│   └── ui/
+├── docker/
+│   └── docker-compose.yml              # Piston multi-language engine
+├── turbo.json  package.json  pnpm-workspace.yaml
+└── README.md  PROJECT_DEFENSE_GUIDE.md
+
 
 <sub>Illustrative repository structure. Confirm actual file paths, package names, and configuration against the project source.</sub>
 
@@ -581,8 +555,8 @@ Docker if using the containerized Practice Lab engine.
 
 01 · Clone the repository
 
-git clone <YOUR_REPOSITORY_URL>
-cd CareerVerse
+git clone https://github.com/karthiksamak-git/jit23_team49.git
+cd jit23_team49
 
 02 · Install dependencies
 
@@ -671,6 +645,14 @@ Opportunity discovery works when configured.
 Database-backed data persists correctly.
 
 Supported code-execution workflows run as expected.
+
+Profile panel opens from the avatar with real stats, calendar and graphs.
+
+Daily check-in awards XP and coins once per day and persists after logout.
+
+PDF report downloads with the project tag, charts and generation timestamp.
+
+Collection page downloads any earned badge as a 1:1 image.
 
 <img src="https://img.shields.io/badge/09-DESIGN_SYSTEM-8B5CF6?style=flat-square&labelColor=101522" alt="09 Design System" />
 

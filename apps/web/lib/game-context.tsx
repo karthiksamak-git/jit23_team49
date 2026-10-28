@@ -2,6 +2,13 @@
 
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
 import { isSoundEnabled, setSoundEnabled, playSound } from "./sound-engine";
+import { logEvent, getStreak } from "./activity";
+
+/** The header flame / streak must show measured activity, never invented state. */
+function withRealStreak<T extends { streak: number }>(state: T): T {
+  if (typeof window === "undefined") return state;
+  return { ...state, streak: getStreak().current };
+}
 
 /* ═══════════════════════════════════════════
    GAME STATE CONTEXT
@@ -222,7 +229,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // Load on mount
   useEffect(() => {
     const state = loadFromStorage();
-    setPlayer(state);
+    setPlayer(withRealStreak(state));
     setLoading(false);
     setSoundOn(isSoundEnabled());
   }, []);
@@ -373,13 +380,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const completeMission = useCallback((missionId: string, _xpEarned?: number) => {
     // Coins-only economy: completing a mission for the FIRST time grants program credit
+    logEvent("mission", { source: missionId });
     setPlayer((prev) => {
       if (prev.completedMissions.includes(missionId)) return prev;
-      return {
+      return withRealStreak({
         ...prev,
         coins: prev.coins + 15, // first-completion program credit
         completedMissions: [...prev.completedMissions, missionId],
-      };
+      });
     });
     tryApiCall("/gamification/complete-mission", {
       method: "POST",
@@ -388,10 +396,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   }, [tryApiCall]);
 
   const addXp = useCallback((amount: number) => {
+    if (amount > 0) logEvent("xp", { amount });
     setPlayer((prev) => {
       const newXp = prev.xp + amount;
       const { level, xpToNext } = calculateLevel(newXp);
-      return { ...prev, xp: newXp, level, xpToNext };
+      return withRealStreak({ ...prev, xp: newXp, level, xpToNext });
     });
   }, []);
 

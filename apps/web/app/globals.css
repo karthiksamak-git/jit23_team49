@@ -19,6 +19,166 @@
   --button-ripple-color: oklch(0.145 0 0 / 0.3);
 }
 
+/* ═══════════════════════════════════════════
+   REALISTIC THICK BOOK — hosts Today's
+   Recommendations on the dashboard.
+   Leather cover + spine, cream page-edge
+   stacks peeking out on the right/bottom,
+   dark paper spread with a centre crease.
+   ═══════════════════════════════════════════ */
+.reco-book {
+  position: relative;
+  padding: 16px 18px 20px 24px;
+  border-radius: 6px 18px 18px 6px;
+  background:
+    radial-gradient(140% 90% at 15% 0%, rgba(140, 104, 56, 0.22), transparent 55%),
+    linear-gradient(145deg, #261b10 0%, #1b140c 48%, #120d07 100%);
+  border: 1px solid #3d2e1b;
+  box-shadow:
+    0 34px 64px -20px rgba(0, 0, 0, 0.95),
+    0 12px 26px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(230, 205, 150, 0.16),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.55);
+}
+/* leather grain */
+.reco-book::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(38deg, rgba(255, 255, 255, 0.02) 0 2px, transparent 2px 6px),
+    repeating-linear-gradient(-44deg, rgba(0, 0, 0, 0.28) 0 3px, transparent 3px 8px);
+}
+/* spine: raised band down the left edge */
+.reco-book::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 16px;
+  border-radius: 6px 0 0 6px;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.85), rgba(230, 205, 150, 0.14) 55%, rgba(0, 0, 0, 0.6));
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.6);
+}
+/* thick cream page-edge stack peeking out right + bottom */
+.book-pageedge {
+  position: absolute;
+  top: 7px;
+  right: -10px;
+  bottom: -10px;
+  left: 22px;
+  border-radius: 0 14px 16px 4px;
+  background-image:
+    repeating-linear-gradient(180deg, #ece1c5 0 2px, #b9ac8b 2px 3.5px),
+    repeating-linear-gradient(90deg, #e7dcc0 0 2px, #c3b695 2px 3.5px);
+  background-size: 13px 100%, 100% 13px;
+  background-position: right top, right bottom;
+  background-repeat: no-repeat, no-repeat;
+  box-shadow: 6px 8px 18px rgba(0, 0, 0, 0.75);
+  pointer-events: none;
+}
+/* the open pages */
+.book-spread {
+  position: relative;
+  z-index: 1;
+  border-radius: 6px 12px 12px 4px;
+  padding: 20px 22px 24px;
+  background:
+    radial-gradient(120% 60% at 50% -10%, rgba(210, 190, 150, 0.07), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.012) 0 3px, transparent 3px 7px),
+    linear-gradient(160deg, #171412 0%, #131011 55%, #100d0e 100%);
+  box-shadow: inset 16px 0 26px -16px rgba(0, 0, 0, 0.95), inset 0 0 40px rgba(0, 0, 0, 0.4);
+}
+/* centre crease of the open book */
+.book-spread::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 50%;
+  width: 26px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.4) 42%, rgba(0, 0, 0, 0.45) 58%, transparent);
+}
+.book-cover-header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 6px 16px;
+  border-bottom: 1px solid rgba(180, 155, 100, 0.22);
+  margin-bottom: 18px;
+}
+.book-gilt {
+  font-family: Cinzel, serif;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  background: linear-gradient(180deg, #f6e7b8 0%, #d4bf8a 45%, #9a7f47 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.9));
+}
+/* ultra-realistic wax seal tag: "AI Generated" */
+.ai-seal {
+  position: relative;
+  flex-shrink: 0;
+  width: 78px;
+  height: 78px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border-radius: 47% 53% 51% 49% / 53% 47% 53% 47%;
+  background:
+    radial-gradient(circle at 34% 27%, rgba(255, 244, 214, 0.95) 0%, rgba(226, 196, 130, 0.9) 26%, rgba(169, 134, 74, 0.95) 62%, rgba(104, 82, 44, 0.98) 100%);
+  box-shadow:
+    0 7px 16px rgba(0, 0, 0, 0.75),
+    inset 0 2px 3px rgba(255, 255, 255, 0.65),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 7px rgba(97, 76, 40, 0.5),
+    inset 0 0 0 8px rgba(255, 240, 200, 0.28);
+  cursor: default;
+}
+.ai-seal::before {
+  /* wax drips / irregular edge */
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 51% 49% 47% 53% / 49% 52% 48% 51%;
+  background: radial-gradient(circle at 40% 30%, rgba(214, 184, 120, 0.5), rgba(90, 70, 36, 0.7));
+  z-index: -1;
+}
+.ai-seal .seal-main {
+  font-family: Cinzel, serif;
+  font-weight: 900;
+  font-size: 21px;
+  letter-spacing: 0.04em;
+  color: #4a3a1c;
+  text-shadow: 0 1px 0 rgba(255, 246, 214, 0.75), 0 -1px 1px rgba(0, 0, 0, 0.45);
+  line-height: 1;
+}
+.ai-seal .seal-sub {
+  font-family: Inter, sans-serif;
+  font-weight: 800;
+  font-size: 7px;
+  letter-spacing: 0.2em;
+  color: #5a4722;
+  text-shadow: 0 1px 0 rgba(255, 246, 214, 0.7);
+}
+@media (max-width: 640px) {
+  .book-cover-header { flex-direction: column; align-items: flex-start; }
+  .ai-seal { width: 66px; height: 66px; }
+}
+
 .dark {
   --button-ripple-color: oklch(0.985 0 0 / 0.5);
 }

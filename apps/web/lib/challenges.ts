@@ -15,6 +15,7 @@
    ═══════════════════════════════════════════ */
 
 import { chatWithGroq, ChatMessage } from "./ai-client";
+import { logEvent } from "./activity";
 import { repairChallenge, DojoChallenge } from "./ai-dojo";
 import { matchRealmId } from "./realm-match";
 import {
@@ -792,6 +793,24 @@ export async function judgeCoding(
     results.push({ label, stdin: t.stdin, expected: t.expected, actual: res.stdout, passed });
     if (!passed) raise("Wrong Answer");
     onProgress?.(i + 1, tests.length);
+  }
+
+  /* Feed the real activity log: an accepted SUBMIT is measurable evidence
+     of practice (drives the Collection's coding badges and profile stats).
+     Deduped per problem so re-submitting an already-solved challenge can
+     never inflate the count. */
+  if (mode === "submit" && verdict === "Accepted") {
+    try {
+      const raw = localStorage.getItem("cv_solved_challenges");
+      const solved: string[] = raw ? JSON.parse(raw) : [];
+      if (!solved.includes(challenge.id)) {
+        solved.push(challenge.id);
+        localStorage.setItem("cv_solved_challenges", JSON.stringify(solved));
+        logEvent("code_solve", { source: challenge.id });
+      }
+    } catch {
+      /* storage unavailable — skip the stat rather than miscount */
+    }
   }
 
   return { verdict, results, message };

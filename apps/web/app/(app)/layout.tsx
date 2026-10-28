@@ -5,9 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/game-context";
-import { CleanSamuraiImg } from "@/lib/clean-samurai";
 import { GlobalMentorAgent } from "@/components/global-mentor-agent";
+import { ProfilePanel } from "@/components/profile-panel";
 import { HoverButton } from "@/components/ui/hover-glow-button";
+import { startTimeTracking } from "@/lib/activity";
 import { gsap, ScrollTrigger, prefersReducedMotion } from "@/lib/gsap";
 import { Flame, Volume2, VolumeX, Hexagon } from "lucide-react";
 
@@ -19,6 +20,8 @@ import { Flame, Volume2, VolumeX, Hexagon } from "lucide-react";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileNav, setMobileNav] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
   const { player, signOut, soundOn, toggleSound, sfx } = useGame();
   const prevCoins = useRef<number | null>(null);
   const progressRef = useRef<HTMLDivElement>(null);
@@ -45,6 +48,41 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  /* Real study-time tracker: ticks visible-app seconds into the activity
+     log so the profile's hours/calendar are measured, not invented. */
+  useEffect(() => {
+    const stop = startTimeTracking();
+    return stop;
+  }, []);
+
+  /* The avatar in the top bar opens the profile panel — there is no separate
+     Profile tab. Close it on outside click or Escape, and let any page ask
+     for it with the `careerverse:open-profile` event. */
+  useEffect(() => {
+    if (!profileOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setProfileOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [profileOpen]);
+
+  useEffect(() => {
+    const open = () => {
+      setMobileNav(false);
+      setProfileOpen(true);
+    };
+    window.addEventListener("careerverse:open-profile", open);
+    return () => window.removeEventListener("careerverse:open-profile", open);
+  }, []);
+
   // Soft coin ping when the balance grows
   useEffect(() => {
     if (prevCoins.current === null) {
@@ -57,12 +95,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const routes = [
     { label: "Dashboard", href: "/dashboard", color: "text-[#22d3ee]", glow: "#22d3ee" },
-    { label: "Learning Path", href: "/world-map", color: "text-[#c084fc]", glow: "#c084fc" },
+    { label: "World Map", href: "/world-map", color: "text-[#c084fc]", glow: "#c084fc" },
     { label: "Practice Lab", href: "/sandbox", color: "text-[#fbbf24]", glow: "#fbbf24" },
     { label: "Mock Interview", href: "/interview", color: "text-[#fb7185]", glow: "#fb7185" },
     { label: "Jobs", href: "/opportunities", color: "text-[#34d399]", glow: "#34d399" },
-    { label: "My Progress", href: "/discover", color: "text-[#60a5fa]", glow: "#60a5fa" },
-    { label: "Portfolio", href: "/portfolio", color: "text-[#c084fc]", glow: "#c084fc" },
+    { label: "Collection", href: "/portfolio", color: "text-[#c084fc]", glow: "#c084fc" },
   ];
 
   const isBoarding = pathname === "/onboarding";
@@ -89,29 +126,60 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           />
           <div className="flex items-center justify-between px-4 md:px-5 h-14 max-w-6xl mx-auto">
 
-            {/* Left: Identity */}
-            <Link href="/dashboard" className="flex items-center gap-3 group">
-              {/* Avatar */}
-              <div className="w-8 h-8 rounded-full border border-[#b49b64]/40 bg-[#0a0b0d] flex items-center justify-center p-0.5 overflow-hidden">
-                <CleanSamuraiImg alt="Avatar" className="w-full h-full object-contain" />
-              </div>
-              <div className="hidden sm:block">
-                <span className="text-xs font-semibold tracking-wider group-hover:brightness-125 transition-all aurora-text-soft">
-                  {player.characterName}
-                </span>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="font-mono text-[9px] text-[#6b6358]">Lv.{player.level}</span>
-                  {/* XP bar */}
-                  <div className="xp-track w-16 h-[3px] rounded-full">
-                    <div className="xp-fill-teal rounded-full" style={{ width: `${player.xpToNext > 0 ? Math.min(100, (player.xp / player.xpToNext) * 100) : 0}%` }} />
-                  </div>
-                  <span className="font-mono text-[9px] text-[#3d3830]">{player.xp}/{player.xpToNext}</span>
+            {/* Left: profile button → profile panel (no separate tab) */}
+            <div ref={profileRef} className="relative">
+              <button
+                onClick={() => {
+                  sfx("click");
+                  setProfileOpen((o) => !o);
+                }}
+                onMouseEnter={() => sfx("hover")}
+                aria-label="Open profile"
+                aria-expanded={profileOpen}
+                className="flex items-center gap-3 group cursor-pointer"
+              >
+                {/* Avatar button — initial medallion instead of the old image */}
+                <div className={`w-9 h-9 rounded-full border bg-[#0a0b0d] flex items-center justify-center font-cinzel text-sm font-bold text-[#e8dfc8] transition-all ${
+                  profileOpen
+                    ? "border-[#d4bf8a] shadow-[0_0_16px_rgba(212,191,138,0.45)]"
+                    : "border-[#b49b64]/50 group-hover:border-[#d4bf8a] group-hover:shadow-[0_0_14px_rgba(180,155,100,0.35)]"
+                }`}>
+                  {(player.characterName || "?").charAt(0).toUpperCase()}
                 </div>
-              </div>
-            </Link>
+                <div className="hidden sm:block text-left">
+                  <span className="text-xs font-semibold tracking-wider group-hover:brightness-125 transition-all aurora-text-soft">
+                    {player.characterName}
+                  </span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="font-mono text-[9px] text-[#6b6358]">Lv.{player.level}</span>
+                    {/* XP bar */}
+                    <div className="xp-track w-16 h-[3px] rounded-full">
+                      <div className="xp-fill-teal rounded-full" style={{ width: `${player.xpToNext > 0 ? Math.min(100, (player.xp / player.xpToNext) * 100) : 0}%` }} />
+                    </div>
+                    <span className="font-mono text-[9px] text-[#3d3830]">{player.xp}/{player.xpToNext}</span>
+                  </div>
+                </div>
+              </button>
+
+              {/* Profile panel — the whole profile, anchored under the avatar */}
+              <AnimatePresence>
+                {profileOpen && (
+                  <motion.div
+                    key="profile-panel"
+                    initial={{ opacity: 0, y: -10, scale: 0.985 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.985 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    className="absolute left-0 top-full mt-2 w-[min(calc(100vw-2rem),52rem)] max-h-[calc(100vh-5.5rem)] overflow-y-auto rounded-2xl border border-[#2a2520] bg-[#06070a]/97 backdrop-blur-xl shadow-[0_24px_60px_rgba(0,0,0,0.7)] profile-panel-scroll z-50"
+                  >
+                    <ProfilePanel onClose={() => setProfileOpen(false)} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* Center: Navigation */}
-            <nav className="hidden md:flex items-center gap-0.5">
+            <nav className="hidden xl:flex items-center gap-0.5">
               {routes.map((r) => {
                 const active = pathname === r.href || pathname?.startsWith(r.href + "/");
                 return (
@@ -120,15 +188,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     href={r.href}
                     glowColor={r.glow}
                     backgroundColor="transparent"
-                    textColor={active ? "#e8dfc8" : "#6b6358"}
-                    hoverTextColor="#c8c0b0"
+                    textColor={active ? "#e8dfc8" : "#8a8175"}
+                    hoverTextColor="#e8dfc8"
                     onClick={() => sfx("click")}
                     onMouseEnter={() => sfx("hover")}
-                    className={`nav-pill px-3 py-1.5 text-[11px] tracking-wider font-medium rounded-lg ${
+                    className={`nav-pill px-4 py-2 text-xs tracking-wider font-semibold rounded-lg ${
                       active ? "nav-pill-active" : ""
                     }`}
                   >
-                    {r.label}
+                    <span className="flex flex-col items-center gap-1 w-full">
+                      {r.label}
+                      {/* visible accent bar for the active tab */}
+                      <span
+                        className={`h-[3px] w-full rounded-full transition-all ${active ? "opacity-100" : "opacity-0"}`}
+                        style={{ background: r.glow, boxShadow: `0 0 8px ${r.glow}` }}
+                      />
+                    </span>
                   </HoverButton>
                 );
               })}
@@ -167,7 +242,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {/* Mobile toggle */}
               <button
                 onClick={() => setMobileNav(!mobileNav)}
-                className="md:hidden text-[#6b6358] hover:text-[#c8c0b0] transition-colors px-1"
+                className="xl:hidden text-[#6b6358] hover:text-[#c8c0b0] transition-colors px-1"
               >
                 <svg viewBox="0 0 20 20" className="w-5 h-5" fill="currentColor">
                   <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
@@ -183,7 +258,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="md:hidden border-t border-[#2a2520]/30 overflow-hidden"
+                className="xl:hidden border-t border-[#2a2520]/30 overflow-hidden"
               >
                 <div className="px-5 py-3 space-y-1">
                   {routes.map((r) => {
@@ -194,8 +269,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         href={r.href}
                         glowColor={r.glow}
                         backgroundColor="transparent"
-                        textColor={active ? "#e8dfc8" : "#6b6358"}
-                        hoverTextColor="#c8c0b0"
+                        textColor={active ? "#e8dfc8" : "#8a8175"}
+                        hoverTextColor="#e8dfc8"
                         onClick={() => setMobileNav(false)}
                         className={`block w-full text-left px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
                           active ? "nav-pill nav-pill-active" : ""

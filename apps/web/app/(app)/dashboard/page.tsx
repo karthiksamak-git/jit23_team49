@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 import { generateDailyRecommendations, LearningRecommendation } from "@/lib/ai-learning-engine";
 import { matchRealmId, BUILT_IN_REALMS } from "@/lib/realm-match";
-import { gsap, useGSAP, prefersReducedMotion } from "@/lib/gsap";
-import { Clock, Flame, Hexagon, Sparkles } from "lucide-react";
+import { Clock } from "lucide-react";
 
 /* ═══════════════════════════════════════════
    PERSONALIZED DASHBOARD
@@ -34,43 +33,6 @@ export default function DashboardPage() {
   const { player, signOut, sfx } = useGame();
   const [recommendations, setRecommendations] = useState<LearningRecommendation[]>([]);
   const [loadingRecs, setLoadingRecs] = useState(true);
-
-  /** GSAP count-up targets for the stat numbers */
-  const xpRef = useRef<HTMLSpanElement>(null);
-  const streakRef = useRef<HTMLSpanElement>(null);
-  const coinsRef = useRef<HTMLSpanElement>(null);
-  const skillsRef = useRef<HTMLSpanElement>(null);
-
-  /* Count-up: tween a proxy object and write rounded values into the DOM.
-     Values start at the real number in SSR markup, so reduced-motion users
-     and no-JS renders still see the correct figure. */
-  useGSAP(
-    () => {
-      if (prefersReducedMotion()) return;
-      const targets: [React.RefObject<HTMLSpanElement | null>, number][] = [
-        [xpRef, player.xp],
-        [streakRef, player.streak],
-        [coinsRef, player.coins],
-        [skillsRef, player.completedMissions.length],
-      ];
-      targets.forEach(([ref, end], i) => {
-        const el = ref.current;
-        if (!el) return;
-        const obj = { v: 0 };
-        gsap.to(obj, {
-          v: end,
-          duration: 1.1,
-          delay: 0.15 + i * 0.08,
-          ease: "power2.out",
-          onUpdate: () => {
-            const n = Math.round(obj.v);
-            el.textContent = i === 2 ? n.toLocaleString() : String(n);
-          },
-        });
-      });
-    },
-    { dependencies: [player.xp, player.streak, player.coins, player.completedMissions.length] }
-  );
 
   const dColor = domainColorMap[player.domainColor] || domainColorMap.teal;
 
@@ -101,14 +63,19 @@ export default function DashboardPage() {
     loadRecs();
   }, [player.characterName, player.recommendedDomain, player.realmName, player.level, player.interests, player.completedMissions]);
 
-  const xpPercent = player.xpToNext > 0 ? Math.min(100, (player.xp / player.xpToNext) * 100) : 0;
-
-  const quickLinks = [
-    { href: "/world-map", title: "Learning Path", description: "Follow your personalized roadmap", color: "surface-teal" },
+  const quickLinks: {
+    href?: string;
+    action?: "profile";
+    title: string;
+    description: string;
+    color: string;
+  }[] = [
+    { href: "/world-map", title: "World Map", description: "Follow your personalized roadmap", color: "surface-teal" },
     { href: "/sandbox", title: "Practice Lab", description: "Write & run code in any language", color: "surface-purple" },
     { href: "/interview", title: "Mock Interview", description: "AI-powered interview practice", color: "surface-amber" },
     { href: "/opportunities", title: "Jobs & Internships", description: "Find roles matching your skills", color: "surface-emerald" },
-    { href: "/discover", title: "My Progress", description: "Track your learning journey", color: "surface-blue" },
+    { href: "/portfolio", title: "Collection", description: "Your earned badges & proofs", color: "surface-blue" },
+    { action: "profile", title: "Profile", description: "Stats, calendar & your PDF report", color: "surface-rose" },
   ];
 
   return (
@@ -150,116 +117,83 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="surface-teal rounded-xl p-4 md:p-5 space-y-2">
-          <span className="text-[10px] text-[#6b6358] uppercase tracking-wider block">
-            Experience
-          </span>
-          <p className="font-mono text-xl md:text-2xl font-bold text-[#22d3ee]">
-            <span ref={xpRef}>{player.xp}</span> <span className="text-xs text-[#6b6358]">XP</span>
-          </p>
-          <div className="xp-track h-1.5 rounded-full">
-            <div className="xp-fill-teal rounded-full" style={{ width: `${xpPercent}%` }} />
-          </div>
-          <p className="font-mono text-[10px] text-[#3d3830]">{Math.max(0, player.xpToNext - player.xp)} XP to level {player.level + 1}</p>
-        </motion.div>
+      {/* Stats (Experience / Streak / Coins / Skills) live in the profile —
+          click the avatar in the header to see them with hours, calendar & graphs. */}
 
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="surface-amber rounded-xl p-4 md:p-5 space-y-2">
-          <span className="text-[10px] text-[#6b6358] uppercase tracking-wider block">
-            Learning Streak
-          </span>
-          <p className="font-mono text-xl md:text-2xl font-bold text-[#fbbf24]">
-            <Flame className="inline-block w-4 h-4 -mt-0.5 text-[#fbbf24]" strokeWidth={2} />
-            <span ref={streakRef}>{player.streak}</span> <span className="text-xs text-[#6b6358]">days</span>
-          </p>
-          <p className="font-mono text-[10px] text-[#3d3830]">Keep it going!</p>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="surface-purple rounded-xl p-4 md:p-5 space-y-2">
-          <span className="text-[10px] text-[#6b6358] uppercase tracking-wider block">
-            Coins Earned
-          </span>
-          <p className="font-mono text-xl md:text-2xl font-bold text-[#c084fc]">
-            <Hexagon className="inline-block w-4 h-4 -mt-0.5 text-[#c084fc]" strokeWidth={2} />
-            <span ref={coinsRef}>{player.coins.toLocaleString()}</span>
-          </p>
-          <p className="font-mono text-[10px] text-[#3d3830]">Earned from practice</p>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="surface-emerald rounded-xl p-4 md:p-5 space-y-2">
-          <span className="text-[10px] text-[#6b6358] uppercase tracking-wider block">
-            Skills Mastered
-          </span>
-          <p className="font-mono text-xl md:text-2xl font-bold text-[#34d399]">
-            <span ref={skillsRef}>{player.completedMissions.length}</span>
-          </p>
-          <p className="font-mono text-[10px] text-[#3d3830]">topics completed</p>
-        </motion.div>
-      </div>
-
-      {/* AI-Generated Daily Recommendations */}
+      {/* AI-Generated Daily Recommendations — inside a realistic thick book */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-cinzel text-lg font-bold aurora-text-soft tracking-wider">
-              Today&apos;s Recommendations
-            </h2>
-            <p className="text-xs text-[#6b6358]">
-              Personalized by AI based on your interests and progress
-            </p>
-          </div>
-          <span className="chip-glow text-[10px] font-mono text-[#22d3ee] px-2.5 py-1 rounded-full border border-[#06b6d4]/30 bg-[#06b6d4]/10">
-            <Sparkles className="inline-block w-3 h-3 mr-1" strokeWidth={2} />
-            AI Generated
-          </span>
-        </div>
-
-        {loadingRecs ? (
-          <div className="flex items-center justify-center py-12 surface rounded-xl">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-2 border-[#06b6d4] border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs text-[#06b6d4] animate-pulse">
-                AI is preparing your personalized learning plan...
-              </p>
+        <div className="reco-book">
+          {/* page-edge stack peeking out right & bottom */}
+          <div className="book-pageedge" aria-hidden="true" />
+          <div className="book-spread">
+            {/* Gilt cover header + wax seal */}
+            <div className="book-cover-header">
+              <div>
+                <h2 className="book-gilt text-lg md:text-xl font-bold tracking-wider">
+                  Today&apos;s Recommendations
+                </h2>
+                <p className="text-xs text-[#6b6358] mt-1.5">
+                  Personalized by AI based on your interests and progress
+                </p>
+              </div>
+              <div
+                className="ai-seal"
+                role="img"
+                aria-label="AI Generated"
+                title="AI Generated — written by AI for you"
+              >
+                <span className="seal-main">AI</span>
+                <span className="seal-sub">GENERATED</span>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {recommendations.map((rec, idx) => {
-              const recColor = domainColorMap[rec.color] || domainColorMap.teal;
-              return (
-                <motion.div
-                  key={rec.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 * idx }}
-                  className={`card-lift rounded-xl p-5 border ${recColor.border} bg-[#0a0b0d]/80 backdrop-blur-sm group`}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className={`font-semibold text-sm ${recColor.text} group-hover:brightness-110 transition-all`}>
-                      {rec.title}
-                    </h3>
-                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${diffColors[rec.difficulty] || diffColors.Medium}`}>
-                      {rec.difficulty}
-                    </span>
-                  </div>
-                  <p className="text-xs text-[#9a9182] leading-relaxed mb-3">
-                    {rec.description}
+
+            {loadingRecs ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-8 h-8 border-2 border-[#06b6d4] border-t-transparent rounded-full animate-spin" />
+                  <p className="text-xs text-[#06b6d4] animate-pulse">
+                    AI is preparing your personalized learning plan...
                   </p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono text-[#3d3830]">
-                      <Clock className="inline-block w-3 h-3 -mt-0.5" strokeWidth={2} /> {rec.timeEstimate}
-                    </span>
-                    <span className="text-[10px] font-mono text-[#6b6358]">
-                      {rec.domain}
-                    </span>
-                  </div>
-                </motion.div>
-              );
-            })}
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {recommendations.map((rec, idx) => {
+                  const recColor = domainColorMap[rec.color] || domainColorMap.teal;
+                  return (
+                    <motion.div
+                      key={rec.id}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 * idx }}
+                      className={`card-lift rounded-xl p-5 border ${recColor.border} bg-[#0a0b0d]/70 backdrop-blur-sm group`}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <h3 className={`font-semibold text-sm ${recColor.text} group-hover:brightness-110 transition-all`}>
+                          {rec.title}
+                        </h3>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${diffColors[rec.difficulty] || diffColors.Medium}`}>
+                          {rec.difficulty}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#9a9182] leading-relaxed mb-3">
+                        {rec.description}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-[#3d3830]">
+                          <Clock className="inline-block w-3 h-3 -mt-0.5" strokeWidth={2} /> {rec.timeEstimate}
+                        </span>
+                        <span className="text-[10px] font-mono text-[#6b6358]">
+                          {rec.domain}
+                        </span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Quick Access Grid */}
@@ -270,60 +204,48 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
           {quickLinks.map((link, idx) => (
             <motion.div
-              key={link.href}
+              key={link.title}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 * idx }}
             >
-              <Link
-                href={link.href}
-                onClick={() => sfx("click")}
-                onMouseEnter={() => sfx("hover")}
-                className={`block ${link.color} card-lift rounded-xl p-5 space-y-2 group`}
-              >
-                <h3 className="text-sm font-semibold text-[#e8dfc8] group-hover:text-white transition-colors">
-                  {link.title}
-                </h3>
-                <p className="text-xs text-[#6b6358] leading-relaxed">
-                  {link.description}
-                </p>
-              </Link>
+              {link.action === "profile" ? (
+                <button
+                  onClick={() => {
+                    sfx("click");
+                    window.dispatchEvent(new Event("careerverse:open-profile"));
+                  }}
+                  onMouseEnter={() => sfx("hover")}
+                  className={`block w-full text-left ${link.color} card-lift rounded-xl p-5 space-y-2 group cursor-pointer`}
+                >
+                  <h3 className="text-sm font-semibold text-[#e8dfc8] group-hover:text-white transition-colors">
+                    {link.title}
+                  </h3>
+                  <p className="text-xs text-[#6b6358] leading-relaxed">
+                    {link.description}
+                  </p>
+                </button>
+              ) : (
+                <Link
+                  href={link.href as string}
+                  onClick={() => sfx("click")}
+                  onMouseEnter={() => sfx("hover")}
+                  className={`block ${link.color} card-lift rounded-xl p-5 space-y-2 group`}
+                >
+                  <h3 className="text-sm font-semibold text-[#e8dfc8] group-hover:text-white transition-colors">
+                    {link.title}
+                  </h3>
+                  <p className="text-xs text-[#6b6358] leading-relaxed">
+                    {link.description}
+                  </p>
+                </Link>
+              )}
             </motion.div>
           ))}
         </div>
       </div>
 
-      {/* Interests & Topics */}
-      {player.interests.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="font-cinzel text-lg font-bold aurora-text-soft tracking-wider">
-            Your Profile
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="surface-teal rounded-xl p-5 space-y-3">
-              <h3 className="text-xs font-medium text-[#22d3ee] uppercase tracking-widest">Interests</h3>
-              <div className="flex flex-wrap gap-1.5">
-                {player.interests.map((int, i) => (
-                  <span key={i} className="text-xs px-2.5 py-1 rounded-full bg-[#06b6d4]/10 border border-[#06b6d4]/20 text-[#22d3ee]">
-                    {int}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className="surface-emerald rounded-xl p-5 space-y-3">
-              <h3 className="text-xs font-medium text-[#34d399] uppercase tracking-widest">Next Topics to Learn</h3>
-              <ul className="space-y-1.5">
-                {player.suggestedTopics.slice(0, 5).map((topic, i) => (
-                  <li key={i} className="text-xs text-[#9a9182] flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
-                    {topic}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Interests & topics live in the profile panel (avatar in the top bar) */}
 
       {/* Footer */}
       <div className="pt-6 border-t border-[#2a2520]/30 flex items-center justify-between text-xs text-[#3d3830]">
