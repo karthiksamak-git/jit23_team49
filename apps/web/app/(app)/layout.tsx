@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGame } from "@/lib/game-context";
 import { CleanSamuraiImg } from "@/lib/clean-samurai";
 import { GlobalMentorAgent } from "@/components/global-mentor-agent";
+import { HoverButton } from "@/components/ui/hover-glow-button";
 import { gsap, ScrollTrigger, prefersReducedMotion } from "@/lib/gsap";
 import { Flame, Volume2, VolumeX, Hexagon } from "lucide-react";
 
@@ -55,13 +56,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [player.coins, sfx]);
 
   const routes = [
-    { label: "Dashboard", href: "/dashboard", color: "text-[#22d3ee]" },
-    { label: "Learning Path", href: "/world-map", color: "text-[#c084fc]" },
-    { label: "Practice Lab", href: "/sandbox", color: "text-[#fbbf24]" },
-    { label: "Mock Interview", href: "/interview", color: "text-[#fb7185]" },
-    { label: "Jobs", href: "/opportunities", color: "text-[#34d399]" },
-    { label: "My Progress", href: "/discover", color: "text-[#60a5fa]" },
-    { label: "Portfolio", href: "/portfolio", color: "text-[#c084fc]" },
+    { label: "Dashboard", href: "/dashboard", color: "text-[#22d3ee]", glow: "#22d3ee" },
+    { label: "Learning Path", href: "/world-map", color: "text-[#c084fc]", glow: "#c084fc" },
+    { label: "Practice Lab", href: "/sandbox", color: "text-[#fbbf24]", glow: "#fbbf24" },
+    { label: "Mock Interview", href: "/interview", color: "text-[#fb7185]", glow: "#fb7185" },
+    { label: "Jobs", href: "/opportunities", color: "text-[#34d399]", glow: "#34d399" },
+    { label: "My Progress", href: "/discover", color: "text-[#60a5fa]", glow: "#60a5fa" },
+    { label: "Portfolio", href: "/portfolio", color: "text-[#c084fc]", glow: "#c084fc" },
   ];
 
   const isBoarding = pathname === "/onboarding";
@@ -114,19 +115,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {routes.map((r) => {
                 const active = pathname === r.href || pathname?.startsWith(r.href + "/");
                 return (
-                  <Link
+                  <HoverButton
                     key={r.href}
                     href={r.href}
+                    glowColor={r.glow}
+                    backgroundColor="transparent"
+                    textColor={active ? "#e8dfc8" : "#6b6358"}
+                    hoverTextColor="#c8c0b0"
                     onClick={() => sfx("click")}
                     onMouseEnter={() => sfx("hover")}
                     className={`nav-pill px-3 py-1.5 text-[11px] tracking-wider font-medium rounded-lg ${
-                      active
-                        ? "nav-pill-active text-[#e8dfc8] bg-white/5"
-                        : "text-[#6b6358] hover:text-[#c8c0b0]"
+                      active ? "nav-pill-active" : ""
                     }`}
                   >
                     {r.label}
-                  </Link>
+                  </HoverButton>
                 );
               })}
             </nav>
@@ -186,16 +189,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   {routes.map((r) => {
                     const active = pathname === r.href;
                     return (
-                      <Link
+                      <HoverButton
                         key={r.href}
                         href={r.href}
+                        glowColor={r.glow}
+                        backgroundColor="transparent"
+                        textColor={active ? "#e8dfc8" : "#6b6358"}
+                        hoverTextColor="#c8c0b0"
                         onClick={() => setMobileNav(false)}
-                        className={`block px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
-                          active ? "text-[#e8dfc8] bg-white/5 nav-pill-active" : "text-[#6b6358] hover:text-[#c8c0b0]"
+                        className={`block w-full text-left px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                          active ? "nav-pill nav-pill-active" : ""
                         }`}
                       >
                         {r.label}
-                      </Link>
+                      </HoverButton>
                     );
                   })}
                   <button

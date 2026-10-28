@@ -44,6 +44,25 @@ function isJunkOption(s: unknown): boolean {
  * correct index, and synthesizes believable distractors when too few remain.
  * Returns null if the challenge is beyond saving (no question/correct info).
  */
+/**
+ * Deterministically move the correct ANSWER (its text and index together) to a
+ * slot derived from the question, so correct choices stay spread across
+ * A/B/C/D instead of clustering in one position. The answer truth itself is
+ * untouched — only where it sits in the list changes.
+ */
+function spreadCorrect(q: DojoChallenge): DojoChallenge {
+  if (!Array.isArray(q.options) || q.options.length < 2 || typeof q.correct !== "number") return q;
+  const opts = [...q.options];
+  const correct = Math.min(Math.max(q.correct, 0), opts.length - 1);
+  let h = 0;
+  const seed = (q.question || "").trim().toLowerCase();
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  const target = h % opts.length;
+  if (target === correct) return { ...q, options: opts, correct };
+  [opts[target], opts[correct]] = [opts[correct], opts[target]];
+  return { ...q, options: opts, correct: target };
+}
+
 export function repairChallenge(q: DojoChallenge, domain: string = ""): DojoChallenge | null {
   if (!q || typeof q.question !== "string" || q.question.trim().length < 8) return null;
   if (typeof q.correct !== "number" || !Number.isFinite(q.correct)) return null;
@@ -90,22 +109,49 @@ export function repairChallenge(q: DojoChallenge, domain: string = ""): DojoChal
   }
   if (correct >= options.length) correct = 0;
 
-  // Deduplicate (case-insensitive), keeping the correct one
+  // Deduplicate (case-insensitive) while KEEPING the correct option in place —
+  // the correct choice must stay spread across A/B/C/D, never pinned to A.
   const seen = new Set<string>();
-  const deduped: string[] = [];
-  let correctText: string | null = null;
-  options.forEach((o, i) => {
+  const keep = options.map((o) => {
     const key = o.trim().toLowerCase();
-    if (i === correct) {
-      correctText = o;
-    } else if (!seen.has(key)) {
-      seen.add(key);
-      deduped.push(o);
-    }
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
-  const finalOptions = correctText !== null ? [correctText, ...deduped].slice(0, 4) : options.slice(0, 4);
-  // Correct is always index 0 after this normalization
-  return { ...q, options: finalOptions, correct: 0 };
+  if (!keep[correct]) {
+    // The correct option duplicates an earlier one → grade the first occurrence.
+    const key = options[correct].trim().toLowerCase();
+    const firstIdx = options.findIndex((o, i) => keep[i] && o.trim().toLowerCase() === key);
+    if (firstIdx >= 0) {
+      keep[correct] = false;
+      correct = firstIdx;
+    } else {
+      keep[correct] = true;
+    }
+  }
+  const droppedBefore = keep.slice(0, correct).filter((f) => !f).length;
+  let finalCorrect = correct - droppedBefore;
+  let kept = options.filter((_, i) => keep[i]);
+
+  // Cap at 4 options without ever losing the correct answer
+  if (kept.length > 4) {
+    const chosen = new Set<number>([finalCorrect]);
+    for (let i = 0; i < kept.length && chosen.size < 4; i++) {
+      if (i !== finalCorrect) chosen.add(i);
+    }
+    const remap = new Map<number, number>();
+    const capped: string[] = [];
+    kept.forEach((o, i) => {
+      if (chosen.has(i)) {
+        remap.set(i, capped.length);
+        capped.push(o);
+      }
+    });
+    finalCorrect = remap.get(finalCorrect) ?? 0;
+    kept = capped;
+  }
+
+  return spreadCorrect({ ...q, options: kept, correct: finalCorrect });
 }
 function extractJson<T>(response: string): T {
   let cleaned = response.replace(/```json/gi, "").replace(/```/gi, "").trim();
@@ -199,7 +245,7 @@ Return ONLY a valid JSON array:
     "pseudocodeLines": ["Line A", "Line B", "Line C"], (optional for pseudocode-order)
     "correctOrder": [0, 1, 2], (optional for pseudocode-order)
     "options": ["Option A", "Option B", "Option C", "Option D"],
-    "correct": 0,
+    "correct": 2,
     "explanation": "2-3 sentences explaining why it's correct and how it works.",
     "conceptKey": "core_concept_name"
   }
@@ -208,7 +254,7 @@ Return ONLY a valid JSON array:
 Rules:
 - Exactly 4 questions with varied types
 - "difficulty" must be one of: ${band.labels.join(", ")}
-- "correct" must be an integer (0 to options.length - 1)
+- "correct" must be an integer (0 to options.length - 1) and its POSITION must vary across the 4 questions (a mix of indexes) — never every answer at the same position
 - Options array must contain 3-4 options
 - Do NOT wrap in markdown backticks. Return raw JSON only.`,
   };
@@ -236,10 +282,10 @@ Rules:
         .filter((c): c is DojoChallenge => c !== null);
       if (repaired.length >= 3) return repaired;
     }
-    return getFallbackDojoChallenges(missionTitle, domain);
+    return getFallbackDojoChallenges(missionTitle, domain).map(spreadCorrect);
   } catch (err) {
     console.warn("AI Dojo challenge generation failed, using fallback:", err);
-    return getFallbackDojoChallenges(missionTitle, domain);
+    return getFallbackDojoChallenges(missionTitle, domain).map(spreadCorrect);
   }
 }
 
@@ -266,7 +312,7 @@ Return ONLY valid JSON:
   "senseiSays": "Let's break this concept down together with a simpler example!",
   "question": "Easier step-by-step question explaining the core idea...",
   "options": ["Simplified Option A", "Simplified Option B", "Simplified Option C", "Simplified Option D"],
-  "correct": 0,
+  "correct": 2,
   "explanation": "Clear explanation reinforcing why this simplified concept works.",
   "conceptKey": "${missedConcept}"
 }
@@ -288,9 +334,9 @@ Do NOT wrap in markdown backticks.`,
       conceptKey: missedConcept,
     }, domain);
     if (repaired) return repaired;
-    return getEasierFallback(missedConcept);
+    return spreadCorrect(getEasierFallback(missedConcept));
   } catch {
-    return getEasierFallback(missedConcept);
+    return spreadCorrect(getEasierFallback(missedConcept));
   }
 }
 

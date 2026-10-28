@@ -53,16 +53,30 @@ services:
   # JavaScript runs in the browser without it; every other language in
   # the Practice Lab compiler needs this service. Runtimes install
   # themselves on first use into the piston_data volume.
+  # privileged: Piston's sandbox needs a WRITABLE /sys/fs/cgroup to create
+  # its isolate hierarchy; Docker Desktop mounts cgroup2 read-only for
+  # normal containers, so the engine crash-loops without this (Linux hosts
+  # typically don't need it).
   engine:
     image: ghcr.io/engineer-man/piston:latest
     container_name: careerverse-engine
     restart: unless-stopped
+    privileged: true
     ports:
       - "2000:2000"
     volumes:
       - piston_data:/piston
+    # No PISTON_REPO_URL: the Piston default IS the package index
+    # (releases/download/pkgs/index). Overriding it with the repo's web
+    # page makes every /packages call parse HTML and crash the API.
     environment:
-      PISTON_REPO_URL: https://github.com/engineer-man/piston
+      # kotlinc/javac need far more than Piston's 10s default compile budget;
+      # hello-world kotlinc alone burns ~30s CPU on this machine
+      PISTON_COMPILE_TIMEOUT: 60000
+      PISTON_COMPILE_CPU_TIME: 60000
+      # JVM-language cold starts also deserve a little run headroom
+      PISTON_RUN_TIMEOUT: 8000
+      PISTON_RUN_CPU_TIME: 8000
 
 volumes:
   postgres_data:

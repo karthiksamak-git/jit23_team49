@@ -4,6 +4,7 @@ import React, { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Loader2, RotateCcw, Terminal, ChevronRight } from "lucide-react";
 import { CODE_LANGUAGES, runProgram, RunResult, CodeLanguage } from "@/lib/code-runner";
+import ChallengesTab from "./challenges";
 
 /* ═══════════════════════════════════════════
    PRACTICE LAB — Real Code Compiler
@@ -14,6 +15,7 @@ import { CODE_LANGUAGES, runProgram, RunResult, CodeLanguage } from "@/lib/code-
    ═══════════════════════════════════════════ */
 
 export default function SandboxPage() {
+  const [tab, setTab] = useState<"compiler" | "challenges">("compiler");
   const [langId, setLangId] = useState("javascript");
   const lang: CodeLanguage =
     CODE_LANGUAGES.find((l) => l.id === langId) || CODE_LANGUAGES[0];
@@ -87,12 +89,23 @@ export default function SandboxPage() {
             Practice Lab
           </p>
           <h1 className="font-cinzel text-2xl font-bold text-[#e8dfc8] tracking-wider">
-            Code Compiler
+            {tab === "compiler" ? "Code Compiler" : "Challenge Arena"}
           </h1>
           <p className="text-xs text-[#6b6358]">
-            Write and run real code in {CODE_LANGUAGES.length} languages.
-            JavaScript executes instantly in your browser; all other languages
-            run on the project&apos;s local engine.
+            {tab === "compiler" ? (
+              <>
+                Write and run real code in {CODE_LANGUAGES.length} languages.
+                JavaScript executes instantly in your browser; all other languages
+                run on the project&apos;s local engine.
+              </>
+            ) : (
+              <>
+                Built from the learning path you follow on the world map: coding
+                problems judged by the real compiler — sample and hidden tests —
+                mixed with every quiz format, from choices and typed answers to
+                bug hunts, rankings and pseudocode ordering.
+              </>
+            )}
           </p>
         </div>
         <div className="font-mono text-[10px] text-[#3d3830] text-right">
@@ -101,6 +114,27 @@ export default function SandboxPage() {
         </div>
       </div>
 
+      {/* Mode tabs */}
+      <div className="flex gap-2">
+        {(["compiler", "challenges"] as const).map((id) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`px-4 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all ${
+              tab === id
+                ? "bg-[#fbbf24]/15 text-[#fbbf24] border border-[#fbbf24]/40"
+                : "surface text-[#6b6358] hover:text-[#c8c0b0]"
+            }`}
+          >
+            {id === "compiler" ? "Compiler" : "Challenges"}
+          </button>
+        ))}
+      </div>
+
+      {tab === "challenges" ? (
+        <ChallengesTab />
+      ) : (
+        <>
       <div className="ink-divider" />
 
       {/* Language selector */}
@@ -262,6 +296,8 @@ export default function SandboxPage() {
         <p className="text-[10px] font-mono text-[#3d3830] text-center">
           Output will appear here. Press Run to execute {lang.label}.
         </p>
+      )}
+        </>
       )}
     </div>
   );

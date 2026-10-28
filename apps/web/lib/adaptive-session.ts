@@ -8,7 +8,31 @@
    Plus end-of-lesson "Fix Your Mistakes" re-practice queue.
    ═══════════════════════════════════════════ */
 
-import type { DojoChallenge } from "./ai-dojo";
+/**
+ * Shape both question stores share: the Dojo's legacy `DojoChallenge`
+ * (numeric id, `type`) and the Practice Lab's `Challenge` (string id,
+ * `kind`/`quizKind`). The trial engine serves both.
+ */
+export interface ArenaItem {
+  id: string | number;
+  difficulty: string;
+  conceptKey?: string;
+  concept?: string;
+  /** legacy Dojo shape */
+  type?: string;
+  /** Practice Lab shape */
+  kind?: "quiz" | "coding";
+  quizKind?: string;
+}
+
+function conceptOf(q: ArenaItem): string {
+  return q.conceptKey || q.concept || "general";
+}
+
+function formatOf(q: ArenaItem): string {
+  if (q.kind) return q.kind === "coding" ? "coding" : q.quizKind || "quiz";
+  return q.type || "multiple-choice";
+}
 
 /* ── Storage keys ── */
 const TOPIC_KEY = "cv_topic_memory";
@@ -160,7 +184,7 @@ function predictCorrect(proficiency: number, difficulty1to10: number): number {
 }
 
 /** Numeric difficulty from the AI's label (Easier→harder scale 1–10). */
-export function difficultyToNumber(d: DojoChallenge["difficulty"]): number {
+export function difficultyToNumber(d: string): number {
   switch (d) {
     case "Easier": return 2;
     case "Standard": return 4;
@@ -187,7 +211,7 @@ export function updateProficiency(correct: boolean, responseMs: number): number 
 }
 
 /** True if picking a question of this difficulty lands in the 60–80% zone. */
-export function isInProductiveZone(difficulty: DojoChallenge["difficulty"]): boolean {
+export function isInProductiveZone(difficulty: string): boolean {
   const s = loadSessionState();
   const p = predictCorrect(s.proficiency, difficultyToNumber(difficulty));
   return p >= ZONE_MIN && p <= ZONE_MAX;
@@ -199,14 +223,14 @@ export function isInProductiveZone(difficulty: DojoChallenge["difficulty"]): boo
  * 2. Among the rest, prefer the question whose predicted P(correct)
  *    sits closest to the middle of the productive zone (Layer A).
  */
-export function pickNextChallenge(pool: DojoChallenge[], usedIds: Set<number>): DojoChallenge | null {
+export function pickNextChallenge<T extends ArenaItem>(pool: T[], usedIds: Set<string | number>): T | null {
   const remaining = pool.filter((q) => !usedIds.has(q.id));
   if (remaining.length === 0) return null;
 
   const s = loadSessionState();
   const weak = new Set(getWeakTopics(5));
 
-  let best: DojoChallenge | null = null;
+  let best: T | null = null;
   let bestScore = -Infinity;
 
   for (const q of remaining) {
@@ -215,9 +239,9 @@ export function pickNextChallenge(pool: DojoChallenge[], usedIds: Set<number>): 
     let score = -Math.abs(p - 0.7) * 10;
 
     // Boost questions on weak / due topics
-    if (weak.has(q.conceptKey)) score += 3;
+    if (weak.has(conceptOf(q))) score += 3;
     // Type variety: alternate formats keeps engagement high
-    if (s.recentResults.length && usedIds.size % 2 === 1 && q.type !== "multiple-choice") score += 0.5;
+    if (s.recentResults.length && usedIds.size % 2 === 1 && formatOf(q) !== "multiple-choice") score += 0.5;
 
     if (score > bestScore) {
       bestScore = score;
@@ -229,8 +253,8 @@ export function pickNextChallenge(pool: DojoChallenge[], usedIds: Set<number>): 
 
 /* ════════════════ End-of-lesson: "Fix Your Mistakes" ════════════════ */
 
-export interface SessionMistake {
-  challenge: DojoChallenge;
+export interface SessionMistake<T extends ArenaItem = ArenaItem> {
+  challenge: T;
   userAnswer: number;
   retried: boolean; // presented in the end-of-lesson section already
 }
@@ -262,7 +286,7 @@ export function startSession(lessonKey: string) {
 }
 
 /** Queue a missed question for the end-of-lesson re-practice section. */
-export function queueMistake(challenge: DojoChallenge, userAnswer: number) {
+export function queueMistake<T extends ArenaItem>(challenge: T, userAnswer: number) {
   const r = loadSessionRecord();
   // Avoid duplicate queueing of the same question
   if (!r.mistakes.some((m) => m.challenge.id === challenge.id)) {
@@ -271,12 +295,12 @@ export function queueMistake(challenge: DojoChallenge, userAnswer: number) {
   saveSessionRecord(r);
 }
 
-export function getMistakes(): SessionMistake[] {
-  return loadSessionRecord().mistakes;
+export function getMistakes<T extends ArenaItem = ArenaItem>(): SessionMistake<T>[] {
+  return loadSessionRecord().mistakes as SessionMistake<T>[];
 }
 
 /** Mark a mistake as resolved (answered correctly in re-practice). */
-export function resolveMistake(challengeId: number) {
+export function resolveMistake(challengeId: string | number) {
   const r = loadSessionRecord();
   r.mistakes = r.mistakes.filter((m) => m.challenge.id !== challengeId);
   saveSessionRecord(r);
@@ -289,7 +313,7 @@ export function resolveMistake(challengeId: number) {
  * getWeakTopics() — this marks them so the UI can say "we'll review
  * this again soon".
  */
-export function flagForFutureReview(challengeId: number) {
+export function flagForFutureReview(challengeId: string | number) {
   const r = loadSessionRecord();
   const m = r.mistakes.find((x) => x.challenge.id === challengeId);
   if (m) {

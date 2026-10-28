@@ -278,6 +278,8 @@ export interface RunResult {
   code: number;
   /** Where the code actually ran */
   engine: "browser" | "piston";
+  /** Compile-stage exit code when the engine compiles first (undefined in browser). */
+  compileCode?: number;
   /** Runtime version reported by the engine, when known */
   version?: string;
   /** True when the engine killed the program (timeout / memory) */
@@ -358,7 +360,11 @@ export async function runProgram(
     );
   }
   if (!res.ok) {
-    throw new Error(data?.error || `Engine returned HTTP ${res.status}`);
+    throw new Error(
+      data?.error ||
+        data?.message ||
+        `Engine returned HTTP ${res.status}`
+    );
   }
 
   const run = data.run || {};
@@ -373,6 +379,8 @@ export async function runProgram(
         : "",
     code: typeof run.code === "number" ? run.code : -1,
     engine: "piston",
+    compileCode:
+      typeof compile.code === "number" ? compile.code : undefined,
     version: data.version || lang.piston.version,
     killed: !!run.killed,
   };

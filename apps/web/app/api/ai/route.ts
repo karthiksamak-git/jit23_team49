@@ -17,7 +17,8 @@ const MODEL_POOL = [
   process.env.GROQ_MODEL,
   "openai/gpt-oss-120b",
   "openai/gpt-oss-20b",
-  "llama-3.3-70b-versatile",
+  // llama-3.3-70b-versatile was retired by Groq (404) — qwen is the live backstop.
+  "qwen/qwen3.8-27b",
 ].filter(Boolean) as string[];
 
 let cachedModel: string | null = null;
@@ -105,7 +106,9 @@ export async function POST(req: NextRequest) {
           model,
           messages,
           temperature,
-          max_tokens: 2048,
+          // The Challenge Arena asks for 10 items (8 quiz types + 2 problems)
+          // in one reply — 2048 truncated it mid-array.
+          max_tokens: 4096,
           ...(model.includes("gpt-oss") ? { reasoning_effort: "low" } : {}),
         }),
       });

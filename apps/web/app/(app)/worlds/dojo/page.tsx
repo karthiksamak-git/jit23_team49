@@ -3,10 +3,15 @@
 import React, { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Flame, Code, Search, Puzzle, Clapperboard, Scale, Target, Lightbulb, Check, X, Wrench, Repeat, Pin, Clock } from "lucide-react";
+import { Heart, Flame, Code, Search, Puzzle, Clapperboard, Scale, Target, Lightbulb, Check, X, Wrench, Repeat, Pin, Clock, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useGame } from "@/lib/game-context";
-import { generateDojoChallenges, generateEasierRetryChallenge, DojoChallenge, QuestionType } from "@/lib/ai-dojo";
+import { generateEasierRetryChallenge, DojoChallenge } from "@/lib/ai-dojo";
+import {
+  Challenge, QuizChallenge, QUIZ_KINDS, QUIZ_KIND_LABELS, buildSession, resolveLearningPath,
+  toArenaQuiz, fromDojo,
+} from "@/lib/challenges";
+import { QuizCard, CodingCard } from "../../sandbox/challenge-cards";
 import {
   startSession,
   queueMistake,
@@ -19,13 +24,20 @@ import {
 import { CleanSamuraiImg } from "@/lib/clean-samurai";
 
 /* ═══════════════════════════════════════════
-   ADAPTIVE QUIZ ARENA — full gamified flow
-   • 5 questions • 30s per question timer
-   • Spec XP: +10 correct, +5 (3-combo), +15 (5-combo),
-     +20 session bonus, +50 level-up
+   PRACTICE TRIAL — gamified mission arena
+   Same challenge engine as the Practice Lab's
+   Challenge Arena: coding problems judged by
+   the real compiler + EVERY quiz format
+   (choices, true/false, scenario, code fill,
+   bug hunt, pseudocode order, ranking, typed
+   answers), scoped to this mission's path.
+   • 30s per quiz card · coding runs untimed
+   • Spec XP: +10 correct, +5 (3-combo),
+     +15 (5-combo), +20 session, +50 level-up
    • Hearts: 5, wrong = -1, 0 = session ends early
-   • Fix-Your-Mistakes: re-asks missed ones in a DIFFERENT
-     format (MCQ→True/False, others→simplified MCQ)
+   • Fix-Your-Mistakes: re-asks missed ones in a
+     DIFFERENT format (MCQ→True/False, others→
+     a simpler question)
    ═══════════════════════════════════════════ */
 
 type Phase = "intro" | "battle" | "mistakes" | "victory" | "defeat";
@@ -42,6 +54,40 @@ const XP_SESSION_BONUS = 20;
 // (correct first-try answers + mistakes cleared in Fix-Your-Mistakes).
 const MASTERY_PASS = 0.6;
 
+/**
+ * A trial = ONE question per format (so the student meets every kind) plus
+ * real coding problems. The pool is fed to the adaptive picker, which orders it.
+ */
+function pickTrialSet(session: Challenge[]): Challenge[] {
+  const quiz = session.filter((c): c is QuizChallenge => c.kind === "quiz");
+  const code = session.filter((c) => c.kind === "coding");
+  const perKind: QuizChallenge[] = [];
+  for (const kind of QUIZ_KINDS) {
+    const hit = quiz.find((q) => q.quizKind === kind);
+    if (hit) perKind.push(hit);
+  }
+  return [...perKind, ...code.slice(0, 2)];
+}
+
+/** Sensei's line above each challenge — mentor voice per format. */
+function senseiFor(c: Challenge): string {
+  if (c.kind === "coding") {
+    return "Real code this time — ▸ Run the sample, then ▸ Submit to face the hidden tests.";
+  }
+  const dojo = toArenaQuiz(c);
+  if (dojo.senseiSays) return dojo.senseiSays;
+  switch (c.quizKind) {
+    case "bug-hunt": return `Something in that snippet breaks — find it before it breaks ${c.concept}.`;
+    case "code-fill": return `Fill the gap so the code stays correct — ${c.concept} is the point.`;
+    case "pseudocode-order":
+    case "ranking": return `Don't guess from memory — reason the order out for ${c.concept}.`;
+    case "typed-answer": return `No options to lean on — type the answer you're confident of for ${c.concept}.`;
+    case "true-false": return `One statement, one truth — does ${c.concept} really work that way?`;
+    case "scenario": return `Read the situation twice — this is how ${c.concept} shows up in the real world.`;
+    default: return `Deep breath — ${c.concept} is the concept on the line here.`;
+  }
+}
+
 function DojoContent() {
   const searchParams = useSearchParams();
   const { completeMission, addXp, player, sfx } = useGame();
@@ -51,15 +97,15 @@ function DojoContent() {
   const domain = searchParams.get("domain") || player.recommendedDomain || player.realmName || "Software Engineering Foundations";
   const lore = searchParams.get("lore") || "Test your practical knowledge and prove your competence.";
 
-  const [challenges, setChallenges] = useState<DojoChallenge[]>([]);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [phase, setPhase] = useState<Phase>("intro");
 
   /* ── Session flow ── */
-  const [usedIds, setUsedIds] = useState<Set<number>>(new Set());
-  const [current, setCurrent] = useState<DojoChallenge | null>(null);
+  const [usedIds, setUsedIds] = useState<Set<string | number>>(new Set());
+  const [current, setCurrent] = useState<Challenge | null>(null);
   const [answeredCount, setAnsweredCount] = useState(0);
-  const [mistakeQueue, setMistakeQueue] = useState<DojoChallenge[]>([]);
+  const [mistakeQueue, setMistakeQueue] = useState<Challenge[]>([]);
   const [mistakeIdx, setMistakeIdx] = useState(0);
   const [stillFailing, setStillFailing] = useState<string[]>([]);
   const [clearedMistakes, setClearedMistakes] = useState(0);
@@ -71,12 +117,14 @@ function DojoContent() {
   const [sessionXp, setSessionXp] = useState(0);
   const [mainCorrect, setMainCorrect] = useState(0);
   const [defeatCause, setDefeatCause] = useState<"hearts" | "mastery">("hearts");
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [showExplanation, setShowExplanation] = useState(false);
+  /** current challenge already graded — keeps card + countdown from double-grading */
+  const [graded, setGraded] = useState(false);
+  /** the 30s countdown expired → the quiz card reveals itself as wrong */
+  const [timeUp, setTimeUp] = useState(false);
+  const gradedRef = useRef(false);
   const [isGeneratingRetry, setIsGeneratingRetry] = useState(false);
   const [lastGain, setLastGain] = useState(0);
   const [gainParts, setGainParts] = useState<string[]>([]);
-  const [shakeKey, setShakeKey] = useState(0);
 
   /* ── Timer ── */
   const [timeLeft, setTimeLeft] = useState(QUESTION_TIME);
@@ -85,27 +133,30 @@ function DojoContent() {
   const mistakeSimplifierRan = useRef(false);
   const prevLevel = useRef<number | null>(null);
 
-  /* ── Load challenges ── */
+  /* ── Load this mission's trial: SAME engine as the Practice Lab ── */
   useEffect(() => {
     async function loadChallenges() {
       setLoading(true);
       try {
-        const generated = await generateDojoChallenges(
-          missionTitle,
-          domain,
-          lore,
-          player.capacityLevel || "Apprentice",
+        const base = resolveLearningPath(domain);
+        const session = await buildSession(
+          {
+            ...base,
+            // This trial is about one mission — it heads the syllabus
+            topics: [missionTitle, lore, ...base.topics].filter(Boolean).slice(0, 12),
+            key: `${base.key}::mission:${missionId}`,
+          },
           player.difficultyLevel || "Beginner"
         );
-        setChallenges(generated.slice(0, 7));
+        setChallenges(pickTrialSet(session));
       } catch (err) {
-        console.error("Failed to load Dojo challenges:", err);
+        console.error("Failed to load the practice trial:", err);
       } finally {
         setLoading(false);
       }
     }
     loadChallenges();
-  }, [missionTitle, domain, lore, player.capacityLevel, player.difficultyLevel]);
+  }, [missionId, missionTitle, domain, lore, player.difficultyLevel]);
 
   /* ── +50 level-up fanfare ── */
   useEffect(() => {
@@ -162,30 +213,51 @@ function DojoContent() {
 
   const totalPlanned = challenges.length;
 
+  /** Reset per-question state and start the clock — quiz cards only; coding runs untimed. */
+  const beginQuestion = useCallback(
+    (next: Challenge | null) => {
+      setCurrent(next);
+      setGraded(false);
+      gradedRef.current = false;
+      setTimeUp(false);
+      setLastGain(0);
+      setGainParts([]);
+      questionStart.current = Date.now();
+      if (next && next.kind === "quiz") {
+        startTimer();
+      } else {
+        stopTimer();
+        setTimeLeft(QUESTION_TIME);
+      }
+    },
+    [startTimer, stopTimer]
+  );
+
   const startBattle = useCallback(() => {
     startSession(missionId);
     sfx("click");
-    const first = pickNextChallenge(challenges, new Set());
-    setCurrent(first);
+    const first = pickNextChallenge(challenges, new Set<string | number>());
     setUsedIds(first ? new Set([first.id]) : new Set());
-    questionStart.current = Date.now();
-    startTimer();
+    beginQuestion(first);
     setPhase("battle");
-  }, [challenges, missionId, sfx, startTimer]);
+  }, [challenges, missionId, sfx, beginQuestion]);
 
   /* ════════ MAIN PHASE ════════ */
 
-  function submitAnswer(idx: number) {
-    if (selectedAnswer !== null || !current) return;
+  /**
+   * One grading path for every format: the quiz card reports its own verdict,
+   * the coding card reports Accepted / not, and leaving a challenge ungraded
+   * (Skip on a coding problem) counts as a miss.
+   */
+  function grade(isCorrect: boolean) {
+    if (gradedRef.current || !current) return;
+    gradedRef.current = true;
+    setGraded(true);
     stopTimer();
-    setSelectedAnswer(idx);
-    setShowExplanation(true);
 
-    const isCorrect = idx === current.correct;
     const responseMs = Date.now() - questionStart.current;
-
     updateProficiency(isCorrect, responseMs);
-    recordAnswer(current.conceptKey, isCorrect, responseMs);
+    recordAnswer(current.concept, isCorrect, responseMs);
 
     if (isCorrect) {
       setMainCorrect((c) => c + 1);
@@ -214,30 +286,29 @@ function DojoContent() {
       sfx("heartLost");
       setCombo(0);
       setHearts((h) => Math.max(0, h - 1));
-      setShakeKey((k) => k + 1);
-      queueMistake(current, idx);
+      // Quiz misses return in Fix-Your-Mistakes; a coding problem is already
+      // retryable in its editor, so it isn't queued for re-practice.
+      if (current.kind === "quiz") queueMistake(current, -1);
     }
   }
 
-  /* ── Timer expiry = wrong answer ── */
+  /* ── Timer expiry → the card reveals itself as wrong ── */
   useEffect(() => {
-    if (phase === "battle" && timeLeft === 0 && selectedAnswer === null && current) {
-      submitAnswer(-1); // -1 never matches → counts as wrong
+    if (phase === "battle" && timeLeft === 0 && !gradedRef.current && current?.kind === "quiz") {
+      setTimeUp(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, phase]);
 
   function advance() {
-    setSelectedAnswer(null);
-    setShowExplanation(false);
-    questionStart.current = Date.now();
+    // Walking away without answering (Skip on a coding problem) is a miss
+    if (!gradedRef.current) grade(false);
 
     const next = pickNextChallenge(challenges, usedIds);
     if (next && hearts > 0) {
       setUsedIds((prev) => new Set(prev).add(next.id));
-      setCurrent(next);
       setAnsweredCount((c) => c + 1);
-      startTimer();
+      beginQuestion(next);
       return;
     }
 
@@ -248,11 +319,11 @@ function DojoContent() {
     }
 
     /* ── Main set done → Fix Your Mistakes in a DIFFERENT format ── */
-    const mistakes = getMistakes().map((m) => m.challenge);
+    const mistakes = getMistakes<Challenge>().map((m) => m.challenge);
     if (mistakes.length > 0) {
       setMistakeQueue(mistakes);
       setMistakeIdx(0);
-      setCurrent(mistakes[0]);
+      beginQuestion(mistakes[0]);
       setPhase("mistakes");
     } else if ((mainCorrect + clearedMistakes) / Math.max(1, totalPlanned) >= MASTERY_PASS) {
       setPhase("victory");
@@ -300,23 +371,33 @@ function DojoContent() {
 
     async function rebuildMistakes() {
       setIsGeneratingRetry(true);
-      const rebuilt: DojoChallenge[] = [];
+      const rebuilt: Challenge[] = [];
       for (const m of mistakeQueue) {
+        // A coding problem is re-attempted in its own editor — no rewrite needed
+        if (m.kind === "coding") {
+          rebuilt.push(m);
+          continue;
+        }
+        const dojoForm = toArenaQuiz(m);
         try {
-          // Scenario/quiz-type → simplified MCQ via AI; MCQ → True/False swap
-          if (m.type === "multiple-choice" || m.type === "scenario") {
-            rebuilt.push(swapFormat(m));
+          if (dojoForm.type === "multiple-choice" || dojoForm.type === "scenario") {
+            // choices → True/False: same idea, different format
+            rebuilt.push(fromDojo(swapFormat(dojoForm), m.id));
           } else {
-            const easier = await generateEasierRetryChallenge(domain, m.conceptKey || "foundations", m.question);
-            rebuilt.push({ ...easier, id: m.id, conceptKey: m.conceptKey || easier.conceptKey });
+            // everything else → a simpler question from the AI
+            const easier = await generateEasierRetryChallenge(domain, dojoForm.conceptKey || "foundations", dojoForm.question);
+            rebuilt.push(fromDojo(easier, m.id));
           }
         } catch {
-          rebuilt.push(swapFormat(m));
+          rebuilt.push(m);
         }
       }
       setIsGeneratingRetry(false);
       setMistakeQueue(rebuilt);
       setCurrent(rebuilt[0] || null);
+      setGraded(false);
+      gradedRef.current = false;
+      setTimeUp(false);
       questionStart.current = Date.now();
     }
     rebuildMistakes();
@@ -324,13 +405,13 @@ function DojoContent() {
 
   /* ════════ MISTAKE PHASE HANDLERS ════════ */
 
-  function submitMistakeAnswer(idx: number) {
-    if (selectedAnswer !== null || !current) return;
-    setSelectedAnswer(idx);
-    setShowExplanation(true);
+  /** The re-practice card reports its own verdict — quiz or code. */
+  function gradeMistake(isCorrect: boolean) {
+    if (gradedRef.current || !current) return;
+    gradedRef.current = true;
+    setGraded(true);
 
-    const isCorrect = idx === current.correct;
-    recordAnswer(current.conceptKey, isCorrect, Date.now() - questionStart.current);
+    recordAnswer(current.concept, isCorrect, Date.now() - questionStart.current);
 
     if (isCorrect) {
       sfx("correct");
@@ -342,18 +423,21 @@ function DojoContent() {
     } else {
       sfx("wrong");
       setCombo(0);
-      setStillFailing((prev) => [...new Set([...prev, current.conceptKey || "topic"])]);
+      setStillFailing((prev) => [...new Set([...prev, current.concept || "topic"])]);
     }
   }
 
   function nextMistake() {
-    setSelectedAnswer(null);
-    setShowExplanation(false);
+    // Moved on without answering (Skip on code) counts as "still tricky"
+    if (!gradedRef.current) gradeMistake(false);
 
     if (mistakeIdx + 1 < mistakeQueue.length) {
       const nextIdx = mistakeIdx + 1;
       setMistakeIdx(nextIdx);
       setCurrent(mistakeQueue[nextIdx]);
+      setGraded(false);
+      gradedRef.current = false;
+      setTimeUp(false);
       questionStart.current = Date.now();
     } else if ((mainCorrect + clearedMistakes) / Math.max(1, totalPlanned) >= MASTERY_PASS) {
       setPhase("victory");
@@ -369,7 +453,8 @@ function DojoContent() {
   const timePct = (timeLeft / QUESTION_TIME) * 100;
   const victoryBonus = sessionXp > 0 ? XP_SESSION_BONUS : 0;
 
-  const isTrueFalse = current?.type === "true-false";
+  /** Mentor line shown above whatever card is live */
+  const senseiLine = current ? senseiFor(current) : "";
 
   if (loading) {
     return (
@@ -380,9 +465,9 @@ function DojoContent() {
             <div className="absolute inset-1 w-10 h-10 border-2 border-[#a855f7]/40 border-b-transparent rounded-full animate-spin" style={{ animationDirection: "reverse", animationDuration: "1.5s" }} />
           </div>
           <div className="space-y-1">
-            <h3 className="font-cinzel text-lg font-bold text-[#e8dfc8]">Formulating Adaptive AI Scenarios</h3>
+            <h3 className="font-cinzel text-lg font-bold text-[#e8dfc8]">Forging Your Practice Trial</h3>
             <p className="text-xs text-[#06b6d4] animate-pulse">
-              Matching challenge complexity to your <strong className="text-[#e8dfc8]">{player.capacityLevel}</strong> level ({domain})...
+              Mixing compiler-judged coding with every quiz type for your <strong className="text-[#e8dfc8]">{player.capacityLevel}</strong> level ({domain})...
             </p>
           </div>
         </div>
@@ -416,7 +501,26 @@ function DojoContent() {
                 </motion.span>
               )}
 
-              {/* Timer ring */}
+              {graded && gainParts.length > 0 && (
+                <motion.span
+                  key={lastGain}
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#10b981]/20 border border-[#10b981]/30 text-[#34d399]"
+                >
+                  {gainParts.join(" ")}
+                </motion.span>
+              )}
+
+              {/* Timer ring — coding challenges run untimed */}
+              {current.kind === "coding" ? (
+                <div
+                  className="w-11 h-11 shrink-0 rounded-full border border-[#06b6d4]/40 bg-[#06b6d4]/10 flex items-center justify-center"
+                  title="No clock — write real code"
+                >
+                  <span className="text-[#22d3ee] text-sm" aria-hidden="true">⌨</span>
+                </div>
+              ) : (
               <div className="relative w-11 h-11">
                 <svg viewBox="0 0 40 40" className="w-11 h-11 -rotate-90">
                   <circle cx="20" cy="20" r="17" fill="none" stroke="#2a2520" strokeWidth="3" />
@@ -434,6 +538,7 @@ function DojoContent() {
                   {timeLeft}
                 </span>
               </div>
+              )}
             </div>
 
             {/* Progress */}
@@ -470,15 +575,17 @@ function DojoContent() {
 
               <div className="dialogue-box-teal rounded-xl px-6 py-5 max-w-md mx-auto text-left">
                 <p className="font-cinzel text-sm text-[#c8c0b0] leading-relaxed italic">
-                  &quot;{totalPlanned} scenarios, <strong>30 seconds</strong> each. Chain answers for combo XP, and missed questions return in a <strong>different format</strong> at the end — Fix Your Mistakes!&quot;
+                  &quot;{totalPlanned} challenges — <strong>real coding problems</strong> judged by the compiler, plus every quiz format: choices, ordering, bug hunts, typed answers. Quiz cards get <strong>30 seconds</strong>; code runs with <strong>no clock</strong>. Chain answers for combo XP, and missed ones return in a <strong>different format</strong> — Fix Your Mistakes!&quot;
                 </p>
                 <p className="mt-3 text-[10px] font-mono text-[#06b6d4] uppercase tracking-widest">— AI Mentor</p>
               </div>
 
-              <div className="flex items-center justify-center gap-6 text-xs font-mono text-[#6b6358]">
-                <span>{totalPlanned} Scenarios</span>
+              <div className="flex items-center justify-center gap-6 text-xs font-mono text-[#6b6358] flex-wrap">
+                <span>{totalPlanned} Challenges</span>
                 <span>·</span>
-                <span className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" strokeWidth={2} /> 30s each</span>
+                <span>⌨ Coding + {QUIZ_KINDS.length} Quiz Types</span>
+                <span>·</span>
+                <span className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" strokeWidth={2} /> 30s quiz · untimed code</span>
                 <span>·</span>
                 <span>{MAX_HEARTS} Hearts</span>
               </div>
@@ -506,124 +613,31 @@ function DojoContent() {
                   stable bar above, outside the per-question AnimatePresence card, so the
                   timer never displays a stale value when a new question mounts. */}
 
-              {/* Question */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono text-[#06b6d4] uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-[#06b6d4]/30 bg-[#06b6d4]/10">
-                    {current.type === "code-fill" ? "Code Fill" : current.type === "bug-hunt" ? "Bug Hunt" : current.type === "pseudocode-order" ? "Logic Sequence" : current.type === "scenario" ? "Scenario" : current.type === "true-false" ? "True or False" : "Quiz"}
-                  </span>
-                  <span className="font-mono text-[10px] text-[#6b6358]">
-                    {answeredCount + 1}/{totalPlanned}
-                  </span>
-                </div>
-
-                <div className="dialogue-box-teal p-3 rounded-xl text-xs text-[#c8c0b0] italic flex items-center gap-3">
-                  <Lightbulb className="w-4 h-4 text-[#fbbf24] shrink-0" strokeWidth={2} />
-                  <p>&quot;{current.senseiSays}&quot;</p>
-                </div>
-
-                <h2 className="font-cinzel text-lg md:text-xl font-bold text-[#e8dfc8] leading-snug">
-                  {current.question}
-                </h2>
+              {/* Challenge header: format + progress */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-mono text-[#06b6d4] uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-[#06b6d4]/30 bg-[#06b6d4]/10">
+                  {current.kind === "coding"
+                    ? "Coding · Compiler Judge"
+                    : QUIZ_KIND_LABELS[current.quizKind] || "Quiz"}
+                </span>
+                <span className="font-mono text-[10px] text-[#6b6358]">
+                  {answeredCount + 1}/{totalPlanned}
+                </span>
               </div>
 
-              {current.codeSnippet && (
-                <div className="bg-[#050608] border border-[#2a2520] rounded-xl p-4 font-mono text-xs text-[#34d399] overflow-x-auto leading-relaxed shadow-inner">
-                  <pre>{current.codeSnippet}</pre>
-                </div>
+              <div className="dialogue-box-teal p-3 rounded-xl text-xs text-[#c8c0b0] italic flex items-center gap-3">
+                <Lightbulb className="w-4 h-4 text-[#fbbf24] shrink-0" strokeWidth={2} />
+                <p>&quot;{senseiLine}&quot;</p>
+              </div>
+
+              {/* The exact cards the Practice Lab uses: every quiz format, plus
+                  coding problems judged by the real compiler (Run → sample,
+                  Submit → hidden tests, verdict + explain-my-mistake). */}
+              {current.kind === "coding" ? (
+                <CodingCard key={current.id} item={current} onNext={advance} onResult={grade} />
+              ) : (
+                <QuizCard key={current.id} item={current} onNext={advance} onResult={grade} forceReveal={timeUp} />
               )}
-
-              {/* Options */}
-              <div className={`space-y-3 pt-2 ${isTrueFalse ? "grid grid-cols-2" : ""}`}>
-                {current.options.map((optText, i) => {
-                  let cardStyle = "border-[#2a2520] bg-[#0a0b0d]/80 text-[#c8c0b0] hover:border-[#06b6d4]/50 hover:bg-[#06b6d4]/5";
-                  if (selectedAnswer !== null) {
-                    if (i === current.correct) {
-                      cardStyle = "border-[#10b981] bg-[#10b981]/15 text-[#34d399] shadow-[0_0_15px_rgba(16,185,129,0.3)]";
-                    } else if (i === selectedAnswer) {
-                      cardStyle = "border-[#fb7185] bg-[#fb7185]/15 text-[#fb7185]";
-                    } else {
-                      cardStyle = "border-[#1e1a16] bg-[#060708]/40 text-[#4a443a] opacity-50";
-                    }
-                  }
-                  return (
-                    <motion.button
-                      key={i}
-                      whileHover={selectedAnswer === null ? { scale: 1.01 } : {}}
-                      whileTap={selectedAnswer === null ? { scale: 0.99 } : {}}
-                      onMouseEnter={selectedAnswer === null ? () => sfx("hover") : undefined}
-                      onClick={() => submitAnswer(i)}
-                      disabled={selectedAnswer !== null}
-                      className={`p-4 rounded-xl text-left border text-xs md:text-sm font-medium transition-all flex items-start gap-3 ${cardStyle}`}
-                    >
-                      <span className="font-mono text-xs opacity-60 w-5 text-center mt-0.5 shrink-0 flex items-center justify-center">
-                        {isTrueFalse ? (i === 0 ? <Check className="w-3.5 h-3.5" strokeWidth={2.5} /> : <X className="w-3.5 h-3.5" strokeWidth={2.5} />) : String.fromCharCode(65 + i)}
-                      </span>
-                      <span className="flex-1 leading-relaxed">{optText}</span>
-                    </motion.button>
-                  );
-                })}
-              </div>
-
-              {/* Feedback */}
-              <AnimatePresence>
-                {showExplanation && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden pt-2"
-                  >
-                    <div
-                      key={shakeKey}
-                      className={`rounded-xl p-5 space-y-3 border ${
-                        selectedAnswer === current.correct
-                          ? "border-[#10b981]/40 bg-[#10b981]/10 text-[#34d399]"
-                          : "border-[#fb7185]/40 bg-[#fb7185]/10 text-[#fb7185]"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 font-bold text-sm flex-wrap">
-                          <span className="flex items-center gap-1.5">
-                            {selectedAnswer === current.correct ? (
-                              <><Check className="w-4 h-4 text-[#34d399]" strokeWidth={2.5} /> Correct!</>
-                            ) : selectedAnswer === -1 ? (
-                              <><Clock className="w-4 h-4 text-[#fbbf24]" strokeWidth={2} /> Time&apos;s Up!</>
-                            ) : (
-                              <><X className="w-4 h-4 text-[#fb7185]" strokeWidth={2.5} /> Not Quite!</>
-                            )}
-                          </span>
-                          {selectedAnswer === current.correct && (
-                            <motion.span
-                              key={lastGain}
-                              initial={{ opacity: 0, y: -6 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#10b981]/20 border border-[#10b981]/30"
-                            >
-                              {gainParts.join(" ")}
-                            </motion.span>
-                          )}
-                          {selectedAnswer !== current.correct && (
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#fb7185]/20 border border-[#fb7185]/30">
-                              Fix it at the end — different format!
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <p className="text-xs text-[#e8dfc8] leading-relaxed">{current.explanation}</p>
-
-                      <button
-                        onClick={advance}
-                        onMouseEnter={() => sfx("hover")}
-                        className="btn-primary w-full py-3 rounded-xl text-xs font-bold uppercase tracking-wider mt-2 shadow-md cursor-pointer"
-                      >
-                        <span>{selectedAnswer === current.correct ? "Next Challenge →" : "Got it — continue →"}</span>
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </motion.div>
           )}
 
@@ -651,83 +665,33 @@ function DojoContent() {
                 <p>&quot;Same concepts, <strong>different format</strong> — prove you truly understand!&quot;</p>
               </div>
 
-              <h2 className="font-cinzel text-lg md:text-xl font-bold text-[#e8dfc8] leading-snug">
-                {current.question}
-              </h2>
+              {/* Re-asked through the SAME cards as the main set — choices come
+                  back flipped (MCQ → True/False), other formats come back as a
+                  simpler question, and a coding problem returns to its editor. */}
+              {isGeneratingRetry ? (
+                <div className="surface rounded-xl p-6 border border-[#2a2520] text-center text-xs text-[#9a9182] flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
+                  Rewriting your missed challenge in a new format…
+                </div>
+              ) : current.kind === "coding" ? (
+                <CodingCard key={current.id} item={current} onNext={nextMistake} onResult={gradeMistake} />
+              ) : (
+                <QuizCard key={current.id} item={current} onNext={nextMistake} onResult={gradeMistake} />
+              )}
 
-              <div className={`space-y-3 ${current.type === "true-false" ? "grid grid-cols-2" : ""}`}>
-                {current.options.map((optText, i) => {
-                  let cardStyle = "border-[#2a2520] bg-[#0a0b0d]/80 text-[#c8c0b0] hover:border-[#fbbf24]/50 hover:bg-[#fbbf24]/5";
-                  if (selectedAnswer !== null) {
-                    if (i === current.correct) {
-                      cardStyle = "border-[#10b981] bg-[#10b981]/15 text-[#34d399] shadow-[0_0_15px_rgba(16,185,129,0.3)]";
-                    } else if (i === selectedAnswer) {
-                      cardStyle = "border-[#fb7185] bg-[#fb7185]/15 text-[#fb7185]";
-                    } else {
-                      cardStyle = "border-[#1e1a16] bg-[#060708]/40 text-[#4a443a] opacity-50";
-                    }
-                  }
-                  return (
-                    <motion.button
-                      key={i}
-                      whileHover={selectedAnswer === null ? { scale: 1.01 } : {}}
-                      whileTap={selectedAnswer === null ? { scale: 0.99 } : {}}
-                      onClick={() => submitMistakeAnswer(i)}
-                      disabled={selectedAnswer !== null || isGeneratingRetry}
-                      className={`p-4 rounded-xl text-left border text-xs md:text-sm font-medium transition-all flex items-start gap-3 ${cardStyle}`}
-                    >
-                      <span className="font-mono text-xs opacity-60 w-5 text-center mt-0.5 shrink-0 flex items-center justify-center">
-                        {current.type === "true-false" ? (i === 0 ? <Check className="w-3.5 h-3.5" strokeWidth={2.5} /> : <X className="w-3.5 h-3.5" strokeWidth={2.5} />) : String.fromCharCode(65 + i)}
-                      </span>
-                      <span className="flex-1 leading-relaxed">{optText}</span>
-                    </motion.button>
-                  );
-                })}
-              </div>
-
-              <AnimatePresence>
-                {showExplanation && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className={`rounded-xl p-5 space-y-3 border ${
-                      selectedAnswer === current.correct
-                        ? "border-[#10b981]/40 bg-[#10b981]/10 text-[#34d399]"
-                        : "border-[#fb7185]/40 bg-[#fb7185]/10 text-[#fb7185]"
-                    }`}>
-                      <div className="font-bold text-sm flex items-center gap-2 flex-wrap">
-                        <span className="flex items-center gap-1.5">
-                          {selectedAnswer === current.correct ? (
-                            <><Check className="w-4 h-4" strokeWidth={2.5} /> Mistake fixed!</>
-                          ) : (
-                            <><Repeat className="w-4 h-4" strokeWidth={2} /> Still tricky —</>
-                          )}
-                        </span>
-                        {selectedAnswer === current.correct && (
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#10b981]/20 border border-[#10b981]/30">+{lastGain} XP</span>
-                        )}
-                      </div>
-                      <p className="text-xs text-[#e8dfc8] leading-relaxed">{current.explanation}</p>
-                      {selectedAnswer !== current.correct && (
-                        <p className="text-[10px] font-mono text-[#fbbf24] flex items-center gap-1.5">
-                          <Pin className="w-3 h-3" strokeWidth={2} />
-                          Queued for spaced-repetition review: 1 day, then 3, 7, 14, 30 days.
-                        </p>
-                      )}
-                      <button
-                        onClick={nextMistake}
-                        onMouseEnter={() => sfx("hover")}
-                        className="btn-primary w-full py-3 rounded-xl text-xs font-bold uppercase tracking-wider mt-2 shadow-md cursor-pointer"
-                      >
-                        <span>{mistakeIdx + 1 < mistakeQueue.length ? "Next Mistake →" : "Finish Trial →"}</span>
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {graded && (
+                <p
+                  className={`text-[11px] font-mono flex items-center gap-1.5 ${
+                    lastGain > 0 ? "text-[#34d399]" : "text-[#fbbf24]"
+                  }`}
+                >
+                  {lastGain > 0 ? (
+                    <><Check className="w-3.5 h-3.5" strokeWidth={2.5} /> Mistake fixed — +{lastGain} XP</>
+                  ) : (
+                    <><Pin className="w-3.5 h-3.5" strokeWidth={2} /> Still tricky — queued for spaced-repetition review: 1 → 3 → 7 → 14 → 30 days.</>
+                  )}
+                </p>
+              )}
             </motion.div>
           )}
 
@@ -846,11 +810,10 @@ function DojoContent() {
                   setClearedMistakes(0);
                   mistakeSimplifierRan.current = false;
                   startSession(missionId);
-                  const first = pickNextChallenge(challenges, new Set());
-                  setCurrent(first);
+                  const first = pickNextChallenge(challenges, new Set<string | number>());
                   setUsedIds(first ? new Set([first.id]) : new Set());
+                  beginQuestion(first);
                   setPhase("battle");
-                  startTimer();
                 }}
                 onMouseEnter={() => sfx("hover")}
                 className="btn-primary px-8 py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest mx-auto block"

@@ -211,6 +211,12 @@ export default function DynamicWorldMapPage() {
   const [showAiModal, setShowAiModal] = useState(false);
   const [customGoal, setCustomGoal] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  /* A fresh open of the generator starts with no stale failure message. */
+  useEffect(() => {
+    if (showAiModal) setAiError(null);
+  }, [showAiModal]);
 
   /* Paths are user-owned: a NEW user starts with an EMPTY list and forges
      whatever path they actually want. Saved lists hydrate back in and every
@@ -462,6 +468,7 @@ export default function DynamicWorldMapPage() {
     if (!customGoal.trim() || isGenerating) return;
 
     setIsGenerating(true);
+    setAiError(null);
 
     try {
       const prompt = `Generate a 5-level learning roadmap for a student who wants to master: "${customGoal}".
@@ -505,7 +512,15 @@ Return ONLY a valid JSON object:
       setShowAiModal(false);
       setCustomGoal("");
     } catch (err) {
-      console.error("Failed to generate AI roadmap:", err);
+      /* Expected failure path: the AI proxy rate-limits or a model is
+         unavailable — tell the player instead of failing silently (and never
+         console.error, which Next dev tools surfaces as a red issue). */
+      console.warn("Failed to generate AI roadmap, showing in-modal message:", err);
+      setAiError(
+        err instanceof SyntaxError
+          ? "The AI replied with something we couldn't read — try generating again."
+          : "The AI forge is busy right now — please try again in a moment."
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -999,6 +1014,11 @@ Return ONLY a valid JSON object:
                     className="w-full bg-[#040506] border border-[#2a2520] rounded-xl px-4 py-2.5 text-sm text-[#e8dfc8] placeholder:text-[#3d3830] focus:outline-none focus:border-[#06b6d4]"
                     required
                   />
+                  {aiError && (
+                    <p className="text-[11px] leading-relaxed text-[#fb7185] mt-2">
+                      {aiError}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex gap-2 justify-end pt-2">

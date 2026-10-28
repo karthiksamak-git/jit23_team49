@@ -1,6 +1,27 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
 @import "./premium.css";
+/* Note: the component template also suggests `@import "tw-animate-css"` —
+   skipped because the package isn't installed and nothing here needs it
+   (animations come from framer-motion / premium.css). */
+
+@theme inline {
+  --radius-none: 0px;
+  --radius-xs: 0.125rem;
+  --radius-default: 0.375rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 1.875rem;
+  --radius-full: 9999px;
+  --color-button-ripple-color: var(--button-ripple-color);
+}
+
+:root {
+  --button-ripple-color: oklch(0.145 0 0 / 0.3);
+}
+
+.dark {
+  --button-ripple-color: oklch(0.985 0 0 / 0.5);
+}
 
 /* ═══════════════════════════════════════════════════════════
    CAREERVERSE — DISCOVER YOUR IT CAREER
