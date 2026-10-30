@@ -549,36 +549,48 @@ Git.
 
 Groq API credentials.
 
-PostgreSQL if required by the configured schema.
-
-Docker if using the containerized Practice Lab engine.
+PostgreSQL and Docker — `npm run docker:up` provides Postgres for sign-in and
+the Practice Lab engine for code execution.
 
 01 · Clone the repository
 
+```bash
 git clone https://github.com/karthiksamak-git/jit23_team49.git
 cd jit23_team49
+```
 
 02 · Install dependencies
 
 Use the package manager configured for the repository.
 
+```bash
 npm install
+```
 
 Or:
 
+```bash
 pnpm install
+```
 
 03 · Configure environment variables
 
-cd apps/web
+Next.js only reads environment files from the app folder, so create
+`apps/web/.env.local` (gitignored) — a `.env` at the repository root is ignored
+by the Next.js dev server and build:
 
-Create .env.local and set the variables required by your configuration.
+```bash
+cd apps/web
 
 # AI provider — keep server-side
 GROQ_API_KEY="your_groq_api_key"
 
-# PostgreSQL — if database features are enabled
-DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/careerverse"
+# PostgreSQL (matches docker/docker-compose.yml)
+DATABASE_URL="postgresql://careerverse:careerverse_dev@localhost:5432/careerverse?schema=public"
+
+# Better Auth — required, otherwise the build stops with BetterAuthError
+BETTER_AUTH_SECRET="any-32-plus-random-characters"
+BETTER_AUTH_URL="http://localhost:3000"
 
 # Optional job-search provider
 NEXT_PUBLIC_ADZUNA_APP_ID="your_adzuna_app_id"
@@ -586,41 +598,51 @@ NEXT_PUBLIC_ADZUNA_APP_KEY="your_adzuna_app_key"
 
 # Optional Piston engine
 PISTON_URL="http://localhost:2000"
+```
 
 Security: Never commit real API keys or database passwords. NEXT_PUBLIC_ variables may be included in browser bundles; private credentials must not use this prefix.
 
-04 · Prepare Prisma
+04 · Start the services and prepare Prisma
 
-If Prisma is configured and migration files already exist:
+Start Docker first — sign-in needs Postgres, and the schema ships without a
+migrations folder, so it is pushed rather than migrated:
 
-npx prisma migrate deploy
-npx prisma generate
+```bash
+npm run docker:up        # Postgres, Redis, Neo4j and the Practice Lab engine
+npm run db:generate      # prisma generate
+npx prisma db push --schema=packages/database/prisma/schema.prisma
+```
 
-For local development when creating a migration is appropriate:
-
-npx prisma migrate dev
-
-Run commands from the directory containing the applicable Prisma configuration. Review the schema and migration history first.
+Run these from the repository root with the Docker daemon running. Use
+`npm run db:migrate` only once you start adding migration files.
 
 05 · Run the application
 
 From apps/web:
 
+```bash
 npm run dev
+```
 
 Or:
 
+```bash
 pnpm dev
+```
 
 Open http://localhost:3000.
 
-06 · Start the optional Practice Lab engine
+06 · Practice Lab code engine
 
-If the repository includes the required script and container configuration:
+`npm run docker:up` already starts it. To start only the engine:
 
+```bash
 npm run engine:up
+```
 
-The default example endpoint is http://localhost:2000. Configure PISTON_URL if the engine runs elsewhere.
+Endpoint: http://localhost:2000 — set `PISTON_URL` if it runs elsewhere.
+JavaScript executes in the browser without the engine; every other language
+in the compiler and Challenge Arena runs through it.
 
 07 · Verify the main workflows
 
