@@ -17,7 +17,8 @@ const MODEL_POOL = [
   process.env.GROQ_MODEL,
   "openai/gpt-oss-120b",
   "openai/gpt-oss-20b",
-  "llama-3.3-70b-versatile",
+  // llama-3.3-70b-versatile was retired by Groq (404) — qwen is the live backstop.
+  "qwen/qwen3.8-27b",
 ].filter(Boolean) as string[];
 
 const MAX_TOKENS = 512;
