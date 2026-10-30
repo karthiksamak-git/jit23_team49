@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/Next.js-15-FFFFFF?style=flat-square&logo=next.js&logoColor=FFFFFF&labelColor=111827" alt="Next.js 15" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=61DAFB&labelColor=111827" alt="React 19" />
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=FFFFFF&labelColor=111827" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Groq-Llama_3.3-8B5CF6?style=flat-square&labelColor=111827" alt="Groq Llama" />
+  <img src="https://img.shields.io/badge/Groq-Multi_Model-8B5CF6?style=flat-square&labelColor=111827" alt="Groq multi-model" />
   <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=FFFFFF&labelColor=111827" alt="PostgreSQL" />
   <img src="https://img.shields.io/badge/Prisma-2D3748?style=flat-square&logo=prisma&logoColor=FFFFFF&labelColor=111827" alt="Prisma" />
   <img src="https://img.shields.io/badge/License-MIT-10B981?style=flat-square&labelColor=111827" alt="MIT License" />
@@ -272,33 +272,35 @@ Custom AI Roadmaps
 
 Enter a goal such as “Become a Cloud Architect in 6 months” and generate a structured learning path.
 
+```text
 YOUR CAREER GOAL
        │
        ▼
 ┌─────────────────────────────┐
-│ 01  FUNDAMENTALS             │
-│     Build prerequisite skills│
+│ 01  FUNDAMENTALS            │
+│    Build prerequisite skills│
 └──────────────┬──────────────┘
                ▼
 ┌─────────────────────────────┐
-│ 02  CORE TECHNOLOGIES        │
-│     Learn role-specific tools│
+│ 02  CORE TECHNOLOGIES       │
+│    Learn role-specific tools│
 └──────────────┬──────────────┘
                ▼
 ┌─────────────────────────────┐
-│ 03  PRACTICAL APPLICATION    │
-│     Solve realistic problems │
+│ 03  PRACTICAL APPLICATION   │
+│    Solve realistic problems │
 └──────────────┬──────────────┘
                ▼
 ┌─────────────────────────────┐
-│ 04  PORTFOLIO PROJECT        │
-│     Demonstrate your skills  │
+│ 04  PORTFOLIO PROJECT       │
+│    Demonstrate your skills  │
 └──────────────┬──────────────┘
                ▼
 ┌─────────────────────────────┐
-│ 05  CAREER PREPARATION       │
-│     Interview and job readiness│
+│ 05  CAREER PREPARATION      │
+│    Interview & job readiness│
 └─────────────────────────────┘
+```
 
 Generated roadmaps should be reviewed against the learner's experience, target role, and available time.
 
@@ -370,7 +372,7 @@ flowchart TB
     MAP --> API
     INT --> API
 
-    API --> AI[Groq API · Llama 3.3 70B]
+    API --> AI[Groq API · gpt-oss + Qwen]
     APP --> AUTH[Better Auth]
     APP --> ORM[Prisma ORM]
     ORM --> DB[(PostgreSQL)]
@@ -432,6 +434,7 @@ Monorepo task orchestration
 
 AI Request Lifecycle
 
+```text
 USER ACTION
     ↓
 SERVER-SIDE API ROUTE
@@ -447,6 +450,7 @@ RESPONSE / SCHEMA VALIDATION
 APPLICATION STATE UPDATE
     ↓
 DYNAMIC UI RENDER
+```
 
 <img src="https://img.shields.io/badge/06-TECHNOLOGY_STACK-00E5CC?style=flat-square&labelColor=101522" alt="06 Technology Stack" />
 
@@ -460,7 +464,7 @@ DYNAMIC UI RENDER
 | 3D | three.js | Samurai character rendering |
 | State | React context, Zustand, React Query | Client and server state |
 | AI Provider | Groq API | Model inference |
-| AI Model | Llama 3.3 70B Versatile | Generative AI capabilities |
+| AI Model | Groq pool: gpt-oss-120b, gpt-oss-20b, Qwen 3.8 | Generative AI capabilities |
 | Database | PostgreSQL | Relational persistence |
 | ORM | Prisma | Database access |
 | Authentication | Better Auth | Authentication workflows |
@@ -472,65 +476,84 @@ DYNAMIC UI RENDER
 
 <img src="https://img.shields.io/badge/07-PROJECT_STRUCTURE-3B82F6?style=flat-square&labelColor=101522" alt="07 Project Structure" />
 
+```text
 CareerVerse/
 ├── apps/
-│   ├── api/                            # optional NestJS service
+│   ├── api/                                   # optional NestJS service
 │   │   ├── src/
-│   │   │   ├── modules/
-│   │   │   ├── neo4j/  prisma/  redis/
+│   │   │   ├── modules/                       # auth · assessment · gamification · onboarding · portfolio · worlds …
+│   │   │   ├── neo4j/                         # graph data layer
+│   │   │   ├── prisma/                        # database service
+│   │   │   ├── redis/                         # cache + pub/sub
+│   │   │   ├── app.module.ts
 │   │   │   └── main.ts
+│   │   ├── .env.example
 │   │   └── package.json
-│   └── web/                            # Next.js 15 application
+│   └── web/                                   # Next.js 15 application
 │       ├── app/
-│       │   ├── (app)/                  # signed-in experience
-│       │   │   ├── dashboard/          # AI recommendations + quick access
+│       │   ├── (app)/                         # signed-in experience
+│       │   │   ├── dashboard/                 # AI recommendations + quick access
 │       │   │   ├── discover/
-│       │   │   ├── interview/          # AI mock interviews
-│       │   │   ├── onboarding/         # branch-aware career assessment
-│       │   │   ├── opportunities/      # jobs & internships
-│       │   │   ├── portfolio/          # Collection: badges + 1:1 downloads
+│       │   │   ├── interview/                 # AI mock interviews
+│       │   │   ├── onboarding/                # branch-aware career assessment
+│       │   │   ├── opportunities/             # jobs & internships
+│       │   │   ├── portfolio/                 # Collection: badges + 1:1 downloads
 │       │   │   ├── recommendations/
-│       │   │   ├── sandbox/            # Practice Lab + Challenge Arena
+│       │   │   ├── sandbox/                   # Practice Lab + Challenge Arena
 │       │   │   ├── skill-tree/
-│       │   │   ├── world-map/          # personalized roadmap
-│       │   │   ├── worlds/dojo/        # adaptive trial
-│       │   │   └── layout.tsx          # top bar, nav, profile panel
-│       │   ├── api/
-│       │   │   ├── ai/                 # Groq-backed AI routes
-│       │   │   ├── auth/[...all]/      # Better Auth handlers
-│       │   │   ├── execute/            # Piston code execution
-│       │   │   └── interview/          # start / answer / end
-│       │   ├── auth/
-│       │   ├── globals.css  premium.css
-│       │   ├── layout.tsx  page.tsx  providers.tsx
+│       │   │   ├── world-map/                 # personalized roadmap
+│       │   │   ├── worlds/
+│       │   │   │   ├── backend/
+│       │   │   │   └── dojo/                  # adaptive trial
+│       │   │   └── layout.tsx                 # top bar, nav, profile panel
+│       │   ├── api/                           # route handlers
+│       │   │   ├── ai/                        # Groq-backed AI routes
+│       │   │   ├── auth/[...all]/             # Better Auth handlers
+│       │   │   ├── execute/                   # Piston code execution
+│       │   │   └── interview/                 # start / answer / end
+│       │   ├── auth/                          # sign-in screen
+│       │   ├── globals.css                    # theme tokens + aurora palette
+│       │   ├── layout.tsx                     # html shell
+│       │   ├── page.tsx                       # landing page
+│       │   ├── premium.css
+│       │   └── providers.tsx                  # client context: game state, sound, data
 │       ├── components/
-│       │   ├── profile-panel.tsx       # avatar dropdown: stats, calendar, graphs, PDF
-│       │   ├── global-mentor-agent.tsx
-│       │   └── ui/                     # hover-glow-button + shared UI
-│       ├── lib/
-│       │   ├── activity.ts             # real study-time tracking + check-ins
-│       │   ├── badges.ts               # badge rules + 1:1 PNG export
-│       │   ├── challenges.ts           # question types, judge, mistake explanations
-│       │   ├── code-runner.ts          # browser + Piston execution
-│       │   ├── user-report.ts          # PDF learning report (pdf-lib)
-│       │   ├── ai-onboarding.ts  ai-dojo.ts  ai-interview.ts
-│       │   ├── ai-learning-engine.ts  ai-client.ts  interview-llm.ts
-│       │   ├── game-context.tsx        # player state, XP, coins, sound
+│       │   ├── profile-panel.tsx              # avatar panel: stats, calendar, graphs, PDF
+│       │   ├── global-mentor-agent.tsx        # floating AI mentor
+│       │   └── ui/                            # hover-glow-button + shared UI
+│       ├── lib/                               # every shared module
+│       │   ├── activity.ts                    # real study-time tracking + check-ins
+│       │   ├── badges.ts                      # badge rules + 1:1 PNG export
+│       │   ├── challenges.ts                  # question types, judge, mistake explanations
+│       │   ├── code-runner.ts                 # browser + Piston execution
+│       │   ├── user-report.ts                 # PDF learning report (pdf-lib)
+│       │   ├── ai-client.ts  ai-dojo.ts  ai-interview.ts
+│       │   ├── ai-learning-engine.ts  ai-onboarding.ts  interview-llm.ts
+│       │   ├── auth.ts  auth-client.ts  server-route-guard.ts
 │       │   ├── career-taxonomy.ts  realm-match.ts  adaptive-session.ts
-│       │   └── gsap.ts  gsap-premium.ts  sound-engine.ts  samurai-3d-viewer.tsx
-│       ├── scripts/compress-terrain.mjs
-│       ├── public/
-│       ├── next.config.js  postcss.config.js  tsconfig.json  package.json
-│       └── .env                        # local secrets, never committed
+│       │   ├── game-context.tsx  onboarding-questions.ts  branch-check.ts
+│       │   ├── adzuna.ts  groq-speech.ts
+│       │   └── gsap.ts  gsap-premium.ts  sound-engine.ts  samurai-3d-viewer.tsx  clean-samurai.tsx
+│       ├── public/                            # images, manifest, terrain assets
+│       ├── scripts/
+│       │   └── compress-terrain.mjs
+│       ├── .env                               # tracked defaults — placeholder Groq key
+│       ├── .env.local                         # real secrets — gitignored
+│       ├── interview-route-check.mjs          # smoke test for interview routes
+│       └── next.config.js  postcss.config.js  tsconfig.json  package.json
 ├── packages/
-│   ├── config/                         # shared tsconfig
-│   ├── database/                       # Prisma schema + migrations
-│   ├── shared/
-│   └── ui/
+│   ├── config/                                # shared tsconfig presets
+│   ├── database/                              # Prisma schema + seed (no migrations yet)
+│   ├── shared/                                # cross-package types + helpers
+│   └── ui/                                    # shared component package
 ├── docker/
-│   └── docker-compose.yml              # Piston multi-language engine
-├── turbo.json  package.json  pnpm-workspace.yaml
+│   └── docker-compose.yml                     # Postgres, Redis, Neo4j + Piston engine
+├── .env.example                               # documented environment template
+├── .gitignore
+├── package.json  package-lock.json            # npm workspaces
+├── pnpm-workspace.yaml  turbo.json
 └── README.md  PROJECT_DEFENSE_GUIDE.md
+```
 
 
 <sub>Illustrative repository structure. Confirm actual file paths, package names, and configuration against the project source.</sub>
